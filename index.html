@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Life RPG</title>
+
+    <link rel="stylesheet" href="style.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Rajdhani:wght@300;400;500;600;700&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>LIFE RPG</h1>
+
+      <!-- HEADER -->
+      <h2>XP Total: <span id="xp-total">0</span></h2>
+      <h2>Nivel: <span id="level">1</span></h2>
+
+      <!-- AVATAR -->
+      <div class="avatar-section">
+        <img id="avatar-img" src="" alt="avatar" />
+        <h3 id="avatar-level">Nivel 1</h3>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-section">
+        <div>💪 Strength: <span id="stat-strength">0</span></div>
+        <div>🧠 Intelligence: <span id="stat-intelligence">0</span></div>
+        <div>⚡ Discipline: <span id="stat-discipline">0</span></div>
+        <div>🎮 Skill: <span id="stat-skill">0</span></div>
+      </div>
+
+      <!-- ACTIVITY SECTION (XP) -->
+      <div class="activity-section">
+        <input
+          id="activity-input"
+          type="text"
+          placeholder="Actividad realizada"
+        />
+
+        <select id="activity-type">
+          <option value="strength">Gimnasio</option>
+          <option value="intelligence">Estudio</option>
+          <option value="discipline">Hábitos</option>
+          <option value="skill">Juegos</option>
+        </select>
+
+        <input id="activity-date" type="date" />
+
+        <button id="activity-btn">Agregar actividad</button>
+      </div>
+
+      <!-- TASK SECTION -->
+      <div class="task-section">
+        <input id="task-input" type="text" placeholder="Nueva tarea..." />
+        <button id="task-btn">Agregar tarea</button>
+
+        <div class="task-container">
+          <div class="column">
+            <h2>Pendientes</h2>
+            <ul id="list-pending"></ul>
+          </div>
+
+          <div class="column">
+            <h2>En progreso</h2>
+            <ul id="list-progress"></ul>
+          </div>
+
+          <div class="column">
+            <h2>Terminadas</h2>
+            <ul id="list-done"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- FUTURO -->
+      <div class="graphics-container"></div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

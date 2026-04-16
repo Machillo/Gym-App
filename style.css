@@ -1,0 +1,104 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --system-blue: #00d4ff;
+    --system-dark: #0a0a0c;
+    --system-bg: rgba(20, 20, 25, 0.9);
+}
+
+body {
+    background-color: var(--system-dark);
+    color: #fff;
+    font-family: 'Roboto', sans-serif;
+}
+
+h1, h2, h3 {
+    font-family: 'Orbitron', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--system-blue);
+    text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+}
+
+.status-section, .activity-section, select, input, button {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+}
+
+button {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    background: transparent;
+    border: 1px solid var(--system-blue);
+    color: var(--system-blue);
+    cursor: pointer;
+    padding: 10px 20px;
+    text-transform: uppercase;
+    clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+    transition: 0.3s;
+}
+
+button:hover {
+    background: var(--system-blue);
+    color: #000;
+    filter: brightness(1.2);
+    box-shadow: 0 0 20px var(--system-blue);
+    transform: scale(1.05);
+}
+
+input[type="text"],
+input[type="date"],
+select {
+    background: rgba(0, 0, 20, 0.7);
+    border: 1px solid var(--system-blue);
+    color: #fff;
+    padding: 10px 15px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 500;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    outline: none;
+    transition: all 0.3s ease;
+    clip-path: polygon(5% 0, 100% 0, 100% 70%, 95% 100%, 0 100%, 0 30%);
+}
+
+input:focus, select:focus {
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+    background: rgba(0, 40, 60, 0.8);
+    border-color: #fff;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 10px;
+    padding: 12px 20px;
+    border-left: 5px solid var(--system-blue); 
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.2rem;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+li:hover {
+    background: rgba(0, 212, 255, 0.1);
+    transform: translateX(5px); 
+}
+
+#list-done li {
+    border-left: 5px solid #444;
+    color: #888;
+    text-decoration: line-through;
+    opacity: 0.6;
+}
