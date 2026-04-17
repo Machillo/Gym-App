@@ -5,100 +5,222 @@
 }
 
 :root {
-    --system-blue: #00d4ff;
-    --system-dark: #0a0a0c;
-    --system-bg: rgba(20, 20, 25, 0.9);
+    --system-blue: #00D4FF;
+    --system-dark: #0A0A0C;
+    --system-glass: rgba(255, 255, 255, 0.05);
+    --border-glass: rgba(255, 255, 255, 0.1);
 }
 
 body {
     background-color: var(--system-dark);
     color: #fff;
     font-family: 'Roboto', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 0;
 }
 
-h1, h2, h3 {
+.container {
+    width: 95%;
+    max-width: 1400px;
+    padding: 2rem;
+    background: rgba(20, 20, 25, 0.8);
+    backdrop-filter: blur(15px);
+    border-radius: 30px;
+    border: 1px solid var(--border-glass);
+    box-shadow: 0 0 40px rgba(0, 243, 255, 0.15);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+.container h1 {
     font-family: 'Orbitron', sans-serif;
-    text-transform: uppercase;
-    letter-spacing: 2px;
+    font-size: 3.5rem;
+    text-align: center;
     color: var(--system-blue);
-    text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+    letter-spacing: 8px;
 }
 
-.status-section, .activity-section, select, input, button {
+.container h2 {
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+h2:has(#xp-total) {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 4px;
+    margin-bottom: -10px;
+}
+
+h2:has(#level) {
+    font-size: 1.5rem;
+    color: #fff;
+    margin-top: 0;
+}
+
+#level {
+    font-size: 3.5rem;
+    line-height: 1;
+    color: var(--system-blue);
+    text-shadow:
+        0 0 10px var(--system-blue),
+        0 0 30px rgba(0, 212, 255, 0.4);
+    font-weight: 900;
+    display: block;
+}
+
+#xp-total {
+    color: var(--system-blue);
+    font-weight: 800;
+}
+
+.top-section {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+    width: 100%;
+    align-items: start;
+    background: var(--system-glass);
+    padding: 2rem;
+    border-radius: 20px;
+}
+
+.avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+#avatar-img {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid var(--system-blue);
+}
+
+.stats-section {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 0;
+}
+
+.stats-section div {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px 20px;
+    border-radius: 12px;
+    border-left: 5px solid var(--system-blue);
+    font-size: 1.1rem;
     font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
+}
+
+.activity-section input,
+.activity-section select,
+.activity-section button {
+    width: 100%;
+}
+
+.activity-section {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 10px;
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.task-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.column {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.5rem;
+    border-radius: 15px;
+    border: 1px solid var(--border-glass);
+    min-height: 400px;
+}
+
+.column h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--system-blue);
+    padding-bottom: 0.5rem;
+}
+
+input, select {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    color: #fff;
+    border-radius: 10px;
+    outline: none;
+    transition: 0.3s;
+    font-family: 'Rajdhani', sans-serif;
+}
+
+input:focus, select:focus {
+    border-color: var(--system-blue);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+input[type="text"], select, input[type="date"], button {
+    font-size: 1rem !important;
+    padding: 8px 12px !important;
+    height: 40px;
 }
 
 button {
     font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
+    cursor: pointer;
     background: transparent;
     border: 1px solid var(--system-blue);
-    color: var(--system-blue);
-    cursor: pointer;
-    padding: 10px 20px;
-    text-transform: uppercase;
     clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
     transition: 0.3s;
+    width: auto;
+    min-width: 150px;
+    align-self: center;
+    color: #fff;
 }
 
 button:hover {
     background: var(--system-blue);
     color: #000;
-    filter: brightness(1.2);
     box-shadow: 0 0 20px var(--system-blue);
-    transform: scale(1.05);
 }
 
-input[type="text"],
-input[type="date"],
 select {
-    background: rgba(0, 0, 20, 0.7);
-    border: 1px solid var(--system-blue);
+    cursor: pointer;
+}
+
+select option {
+    background: var(--system-dark);
     color: #fff;
-    padding: 10px 15px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 500;
-    font-size: 1.1rem;
-    text-transform: uppercase;
-    outline: none;
-    transition: all 0.3s ease;
-    clip-path: polygon(5% 0, 100% 0, 100% 70%, 95% 100%, 0 100%, 0 30%);
-}
-
-input:focus, select:focus {
-    box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
-    background: rgba(0, 40, 60, 0.8);
-    border-color: #fff;
-}
-
-ul {
-    list-style: none;
-    padding: 0;
 }
 
 li {
     background: rgba(255, 255, 255, 0.05);
-    margin-bottom: 10px;
-    padding: 12px 20px;
-    border-left: 5px solid var(--system-blue); 
+    margin-bottom: 12px;
+    padding: 15px;
+    border-left: 4px solid var(--system-blue);
     font-family: 'Rajdhani', sans-serif;
-    font-size: 1.2rem;
-    color: #e0e0e0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: transform 0.2s ease;
-}
-
-li:hover {
-    background: rgba(0, 212, 255, 0.1);
-    transform: translateX(5px); 
-}
-
-#list-done li {
-    border-left: 5px solid #444;
-    color: #888;
-    text-decoration: line-through;
-    opacity: 0.6;
+    list-style: none;
 }
