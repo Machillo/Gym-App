@@ -289,66 +289,94 @@ li {
 
 @media (max-width: 768px) {
     body {
-        padding: 10px 0;
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: start;
     }
 
     .container {
-        padding: 1.5rem;
-        border-radius: 15px; 
+        padding: 1rem;
+        border-radius: 15px;
+        display: flex; 
+        flex-direction: column;
+        align-items: center; 
+        gap: 1.5rem; 
     }
 
+   
     .container h1 {
-        font-size: 2rem; 
+        font-size: 2.2rem;
         letter-spacing: 4px;
+        margin-bottom: 0.5rem;
+    }
+
+    
+    h2:has(#level) {
+        font-size: 1.2rem;
+    }
+    #level {
+        font-size: 3rem;
     }
 
     
     .top-section {
         grid-template-columns: 1fr;
-        padding: 1.5rem;
-        gap: 1.5rem;
+        padding: 1rem;
+        width: 100%;
+        justify-items: center; 
+        gap: 2rem;
     }
 
     #avatar-img {
-        width: 140px;
-        height: 140px;
+        width: 150px;
+        height: 150px;
+    }
+
+   
+    .stats-section {
+        grid-template-columns: 1fr;
+        width: 90%; 
+        gap: 15px;
+        justify-items: center;
+    }
+    .stats-section div {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
     }
 
     
     .activity-section {
-        grid-template-columns: 1fr;
-    }
-
-    
-    .task-container {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .column {
-        min-height: auto; 
+        grid-template-columns: 1fr; 
+        width: 100%;
+        gap: 15px; 
         padding: 1rem;
     }
 
-    
-    button {
+    #activity-btn {
         width: 100%;
-        height: 50px;
+        margin-top: 10px;
     }
 
-    
-    .stats-section {
+    .task-container {
         grid-template-columns: 1fr;
+        width: 100%;
+        gap: 1.5rem;
     }
-}
 
-
-@media (max-width: 480px) {
-    .container h1 {
-        font-size: 1.5rem;
+    .column {
+        min-height: auto;
+        padding: 1rem;
     }
-    
-    #level {
-        font-size: 2.5rem;
+
+    input[type="text"], select, input[type="date"], button {
+        height: 48px;
+        font-size: 1.1rem !important;
+    }
+
+    #task-btn {
+        width: 100%;
+        margin-top: 10px;
     }
 }
