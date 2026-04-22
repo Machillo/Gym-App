@@ -140,6 +140,68 @@ h2:has(#level) {
     border-radius: 12px;
 }
 
+.history-section {
+    background: rgba(0, 212, 255, 0.02); 
+    padding: 1.5rem;
+    border-radius: 20px;
+    border: 1px dashed var(--border-glass);
+    margin-top: 1rem;
+}
+
+.history-section h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    color: var(--system-blue);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+    text-align: left; 
+    border: none;
+}
+
+#activity-log {
+    display: flex;
+    flex-direction: column-reverse; 
+    gap: 8px;
+    max-height: 300px; 
+    overflow-y: auto; 
+    padding-right: 10px;
+}
+
+
+#activity-log::-webkit-scrollbar {
+    width: 4px;
+}
+#activity-log::-webkit-scrollbar-thumb {
+    background: var(--system-blue);
+    border-radius: 10px;
+}
+
+
+.log-item {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    border-left: 2px solid var(--system-blue);
+}
+
+.log-item .log-date {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.8rem;
+}
+
+.log-item .log-category {
+    color: var(--system-blue);
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-right: 10px;
+}
+
 .task-container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
