@@ -16,10 +16,24 @@
   </head>
   <body>
     <div class="container">
+      <div class="design-panel">
+        <button id="design-toggle-btn">DISEÑO</button>
+
+        <div id="design-options" class="hidden">
+          <button class="theme-btn" data-color="#00D4FF">AZUL</button>
+          <button class="theme-btn" data-color="#FF00FF">ROSA</button>
+          <button class="theme-btn" data-color="#00FF41">VERDE</button>
+          <button class="theme-btn" data-color="#9D00FF">MORADO</button>
+          <button class="theme-btn" data-color="#FF0000">ROJO</button>
+        </div>
+      </div>
       <h1>LIFE RPG</h1>
 
       <!-- HEADER -->
       <h2>XP Total: <span id="xp-total">0</span></h2>
+      <div class="xp-bar-container">
+        <div id="xp-bar-fill"></div>
+      </div>
       <h2>Nivel: <span id="level">1</span></h2>
 
       <div class="top-section">

@@ -18,6 +18,10 @@ const listPending = document.getElementById("list-pending");
 const listProgress = document.getElementById("list-progress");
 const listDone = document.getElementById("list-done");
 
+const designToggleBtn = document.getElementById("design-toggle-btn");
+const designOptions = document.getElementById("design-options");
+const themeBtns = document.querySelectorAll(".theme-btn");
+
 let tasks = [];
 let activity = [];
 let xp = 0;
@@ -90,6 +94,20 @@ taskBTN.addEventListener('click', () => {
         taskInput.value = "";
         renderTasks();
     }
+});
+
+designToggleBtn.addEventListener('click', () => {
+    designOptions.classList.toggle('hidden');
+});
+
+themeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const chosenColor = btn.getAttribute('data-color');
+        
+        document.documentElement.style.setProperty('--system-blue', chosenColor);
+        
+        designOptions.classList.add('hidden');
+    });
 });
 
 function renderLog () {
