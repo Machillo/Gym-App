@@ -1,0 +1,17 @@
+body{
+background:#0A0A0C;
+color:white;
+font-family:Arial;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+padding:2rem;
+}
+
+.main-nav{
+display:flex;
+gap:20px;
+padding:20px;
+}

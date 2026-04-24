@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+</nav>
+
+<div class="container">
+
+<div class="design-panel">
+<button id="design-toggle-btn">DISEÑO</button>
+
+<div id="design-options" class="hidden">
+<button class="theme-btn" data-color="#00D4FF">AZUL</button>
+<button class="theme-btn" data-color="#FF00FF">ROSA</button>
+<button class="theme-btn" data-color="#00FF41">VERDE</button>
+</div>
+</div>
+
+<h1>LIFE RPG</h1>
+
+<h2>Nivel <span id="level">1</span></h2>
+
+<h3>XP <span id="xp-total">0</span></h3>
+
+<div class="xp-container">
+<div>
+<span id="xp-current">0</span>/<span id="xp-required">1000</span>
+</div>
+
+<div class="xp-bar-track">
+<div id="xp-bar-fill"></div>
+</div>
+</div>
+
+<div class="top-section">
+
+<div class="avatar-section">
+<img id="avatar-img"
+src="https://i.imgur.com/4AiXzf8.jpeg">
+</div>
+
+<div class="stats-section">
+<div>Strength <span id="stat-strength">0</span></div>
+<div>Agility <span id="stat-agility">0</span></div>
+<div>Intelligence <span id="stat-intelligence">0</span></div>
+<div>Discipline <span id="stat-discipline">0</span></div>
+<div>Vitality <span id="stat-vitality">0</span></div>
+<div>Prestige <span id="stat-prestige">0</span></div>
+</div>
+
+</div>
+
+<div class="activity-section">
+
+<input id="activity-input" placeholder="Actividad">
+
+<select id="activity-type">
+<option value="mma_training">MMA</option>
+<option value="sparring">Sparring</option>
+<option value="strength">Gym</option>
+<option value="intelligence">Study</option>
+<option value="discipline">Habits</option>
+<option value="rest">Rest</option>
+</select>
+
+<input id="activity-date" type="date">
+
+<button id="activity-btn">
+Agregar
+</button>
+
+</div>
+
+<div class="history-section">
+<ul id="activity-log"></ul>
+</div>
+
+</div>
+
+<script src="../js/storage.js"></script>
+<script src="../js/xp-system.js"></script>
+<script src="../js/app.js"></script>
+
+</body>
+</html>

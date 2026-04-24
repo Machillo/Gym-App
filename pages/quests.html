@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="../css/variables.css" />
+    <link rel="stylesheet" href="../css/layout.css" />
+    <link rel="stylesheet" href="../css/pages/quests.css" />
+  </head>
+  <body>
+    <nav class="main-nav">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="quests.html">Quests</a>
+    </nav>
+
+    <div class="container">
+      <h1>QUEST LOG</h1>
+
+      <input id="task-input" />
+      <button id="task-btn">Agregar</button>
+
+      <div class="task-container">
+        <div>
+          <h2>Pendientes</h2>
+          <ul id="list-pending"></ul>
+        </div>
+
+        <div>
+          <h2>En progreso</h2>
+          <ul id="list-progress"></ul>
+        </div>
+
+        <div>
+          <h2>Done</h2>
+          <ul id="list-done"></ul>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/modules/quests.js"></script>
+  </body>
+</html>
