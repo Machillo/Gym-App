@@ -85,6 +85,7 @@ function addXP(type) {
         alert(`¡SISTEMA ACTUALIZADO! Ahora eres Nivel ${level}`);
     }
     renderStats();
+    saveData();
 }
 
 function renderStats() {
@@ -115,6 +116,7 @@ activityBTN.addEventListener('click', () => {
         }
         activity.push(newLog);
         addXP(type);
+        saveData();
         activityInput.value = "";
         renderLog();
     }
@@ -148,6 +150,7 @@ bioBtn.addEventListener('click', () => {
     }
 
     bioHistory.push(newBio);
+    saveData();
     addXP('rest'); 
     renderBioTable(); 
     alert("Datos biométricos sincronizados con el sistema.");
@@ -161,6 +164,7 @@ taskBTN.addEventListener('click', () => {
             estado: "list-pending"
         }
         tasks.push(newTask);
+        saveData();
         taskInput.value = "";
         renderTasks();
     }
@@ -239,6 +243,7 @@ function toggleTaskStatus(index) {
         task.estado = "list-done";
     }
     renderTasks();
+    saveData();
 }
 
 function xpNegative() {
@@ -261,5 +266,44 @@ function xpNegative() {
     }
 }
 
+function loadData () {
+    const saveData = localStorage.getItem('cazadorGameState');
+
+    if (saveData) {
+        const data = JSON.parse(saveData);
+
+        tasks = data.tasks || [];
+        activity = data.activity || [];
+        bioHistory = data.bioHistory || [];
+        xp = data.xp || 0;
+        level = data.level || 1;
+        xpToNextLevel = data.xpToNextLevel || 1000;
+
+        Object.assign(stats, data.stats);
+
+        renderStats();
+        renderLog();
+        renderTasks();
+    }
+}
 
 xpNegative();
+
+function saveData () {
+    const gameData = {
+        tasks,
+        activity,
+        bioHistory,
+        xp,
+        level,
+        xpToNextLevel,
+        stats
+    };
+    localStorage.setItem('cazadorGameState', JSON.stringify(gameData));
+}
+
+
+
+loadData();
+xpNegative();
+renderStats();
