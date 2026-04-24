@@ -619,4 +619,43 @@ li {
     .pliegues-grid {
         grid-template-columns: 1fr 1fr;
     }
+
+    .biometric-panel {
+    padding: 15px; 
+}
+
+.bio-group h4 {
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.bio-group:first-of-type {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+
+.bio-group input {
+    width: 100% !important; 
+    min-width: 0; 
+    font-size: 0.9rem !important;
+    padding: 5px !important;
+}
+
+
+.pliegues-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+}
+
+
+.bio-history-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; 
+    border: 1px solid var(--border-glass);
+}
+
+#bio-history-table {
+    min-width: 600px; 
+}
 }
