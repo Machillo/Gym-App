@@ -5,7 +5,7 @@ const intelligence = document.getElementById("stat-intelligence");
 const discipline = document.getElementById("stat-discipline");
 const prestige = document.getElementById("stat-prestige");
 const agility = document.getElementById("stat-agility");
-const vitality = document.getElementById("stats-vitality");
+const vitality = document.getElementById("stat-vitality");
 
 const activityInput = document.getElementById("activity-input");
 const activityType = document.getElementById("activity-type");
@@ -22,7 +22,7 @@ const brazoF = document.getElementById("bio-brazo-f");
 const antebrazo = document.getElementById("bio-antebrazo");
 const cintura = document.getElementById("bio-cintura");
 const cadera = document.getElementById("bio-cadera");
-const muslo = document.getElementById("biobio-muslo");
+const muslo = document.getElementById("bio-muslo");
 const pantorrilla = document.getElementById("bio-pantorrilla");
 const triceps = document.getElementById("bio-triceps");
 const subescapular = document.getElementById("bio-subescapular");
@@ -138,12 +138,18 @@ bioBtn.addEventListener('click', () => {
             xp += 100; 
             stats.discipline += 2;
             stats.vitality += 2;
+            console.log("¡Bono por mejora de composición!");
+        } else if (newBio.sumatoriaPliegues > lastBio.sumatoriaPliegues + 2) { 
+            xp -= 150;
+            stats.discipline -= 2; 
+            stats.vitality -= 1; 
+            alert("¡ALERTA DE SISTEMA! Tu estado físico está decayendo. Penalización aplicada.");
         }
     }
 
     bioHistory.push(newBio);
-    addXP('rest'); // Usamos 'rest' o una categoría neutra para actualizar stats
-    renderBioTable(); // Esta función la crearemos luego para ver la tabla
+    addXP('rest'); 
+    renderBioTable(); 
     alert("Datos biométricos sincronizados con el sistema.");
 });
 
@@ -235,6 +241,25 @@ function toggleTaskStatus(index) {
     renderTasks();
 }
 
-function xpNegative () {
-    newDay != activityLog;
+function xpNegative() {
+    if (activity.length === 0) return; 
+
+    const lastActivity = activity[activity.length - 1];
+    const lastDate = new Date(lastActivity.fecha);
+    const today = new Date();
+
+    const diffTime = Math.abs(today - lastDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 7) {
+        const penalty = (diffDays - 7) * 20; 
+        xp -= penalty;
+        alert(`¡OXIDACIÓN DETECTADA! Has estado inactivo ${diffDays} días. Perdiste ${penalty} XP.`);
+        
+        if (xp < 0) xp = 0; 
+        renderStats();
+    }
 }
+
+
+xpNegative();
