@@ -1,15 +1,37 @@
 const xpDisplay = document.getElementById("xp-total");
 const levelDisplay = document.getElementById("level");
-const statStrength = document.getElementById("stat-strength");
-const statIntelligence = document.getElementById("stat-intelligence");
-const statDiscipline = document.getElementById("stat-discipline");
-const statSkill = document.getElementById("stat-skill");
+const strength = document.getElementById("stat-strength");
+const intelligence = document.getElementById("stat-intelligence");
+const discipline = document.getElementById("stat-discipline");
+const prestige = document.getElementById("stat-prestige");
+const agility = document.getElementById("stat-agility");
+const vitality = document.getElementById("stats-vitality");
 
 const activityInput = document.getElementById("activity-input");
 const activityType = document.getElementById("activity-type");
 const activityBTN = document.getElementById("activity-btn");
 const activityDate = document.getElementById("activity-date");
 const activityLog = document.getElementById("activity-log");
+
+const bioBtn = document.getElementById("update-bio-btn");
+const peso = document.getElementById("bio-peso");
+const talla = document.getElementById("bio-talla");
+const grasa = document.getElementById("bio-grasa");
+const brazoR = document.getElementById("bio-brazo-r");
+const brazoF = document.getElementById("bio-brazo-f");
+const antebrazo = document.getElementById("bio-antebrazo");
+const cintura = document.getElementById("bio-cintura");
+const cadera = document.getElementById("bio-cadera");
+const muslo = document.getElementById("biobio-muslo");
+const pantorrilla = document.getElementById("bio-pantorrilla");
+const triceps = document.getElementById("bio-triceps");
+const subescapular = document.getElementById("bio-subescapular");
+const biceps = document.getElementById("bio-biceps");
+const cresta = document.getElementById("bio-cresta");
+const supraespinal = document.getElementById("bio-supraespinal");
+const abdominal = document.getElementById("bio-abdominal");
+const musloA = document.getElementById("bio-muslo-a");
+const pantorrillaM = document.getElementById("bio-pantorrilla-m");
 
 const taskBTN = document.getElementById("task-btn");
 const taskInput = document.getElementById("task-input");
@@ -22,48 +44,64 @@ const designToggleBtn = document.getElementById("design-toggle-btn");
 const designOptions = document.getElementById("design-options");
 const themeBtns = document.querySelectorAll(".theme-btn");
 
+const xpCurrentDisplay = document.getElementById("xp-current");
+const xpRequiredDisplay = document.getElementById("xp-required");
+const xpBarFill = document.getElementById("xp-bar-fill");
+
 let tasks = [];
 let activity = [];
+let bioHistory = [];
 let xp = 0;
 let level = 1;
-const stats = {statStrength:0, statIntelligence:0, statDiscipline:0, statSkill:0};
+let xpToNextLevel = 1000;
+const stats = {strength:0, intelligence:0, discipline:0, prestige:0, agility:0, vitality:0};
+const REWARDS = {
+    mma_training: { xp: 80, strength: 3, agility: 2, discipline: 1, vitality: 1 },
+    sparring:     { xp: 120, agility: 5, strength: 2, vitality: 2, prestige: 2 },
+    fight_pro:    { xp: 500, prestige: 10, strength: 5, agility: 5, vitality: 5 },
+    strength:     { xp: 60, strength: 4, discipline: 1, vitality: 1 },
+    intelligence: { xp: 50, intelligence: 4, discipline: 2 },
+    discipline:   { xp: 40, discipline: 5, vitality: 1 },
+    rest:         { xp: 30, vitality: 4, intelligence: 1 }, 
+    skill:        { xp: 20, intelligence: 1, agility: 1 }    
+};
 
 function addXP(type) {
-        switch (type) {
-            case 'strength':
-              xp += 50;
-              stats.statStrength += 1;                
-              break ;
-            case 'intelligence':
-              xp += 40;
-              stats.statIntelligence += 1;
-              break;
-            case 'discipline':
-              xp += 30;
-              stats.statDiscipline += 1;
-              break;
-            case 'skill':
-              xp += 20;
-              stats.statSkill += 1;
-              break;
-            default:
-        }
+    const data = REWARDS[type];
+    if (!data) return; 
+    
+    xp += data.xp;
 
-        if (xp >= 1000){
-            level +=1;
-            xp -= 1000;
-            alert("Nuevo nivel!")
+    for (const key in data) {
+        if (key !== 'xp') {
+            stats[key] += data[key];
         }
-        renderStats();
+    }
+
+    while (xp >= xpToNextLevel) {
+        xp -= xpToNextLevel;
+        level += 1;
+        xpToNextLevel = Math.floor(xpToNextLevel * 1.25);
+        alert(`¡SISTEMA ACTUALIZADO! Ahora eres Nivel ${level}`);
+    }
+    renderStats();
 }
 
 function renderStats() {
-    xpDisplay.textContent = xp;
     levelDisplay.textContent = level;
-    statStrength.textContent = stats.statStrength;
-    statIntelligence.textContent = stats.statIntelligence;
-    statDiscipline.textContent = stats.statDiscipline;
-    statSkill.textContent = stats.statSkill;
+    strength.textContent = stats.strength;
+    intelligence.textContent = stats.intelligence;
+    discipline.textContent = stats.discipline;
+    prestige.textContent = stats.prestige;
+    agility.textContent = stats.agility;
+    vitality.textContent = stats.vitality;
+
+    xpDisplay.textContent = xp; 
+    xpCurrentDisplay.textContent = xp;
+    xpRequiredDisplay.textContent = xpToNextLevel;
+
+    const percentage = (xp / xpToNextLevel) * 100;
+    xpBarFill.style.width = `${percentage}%`;
 }
 
 activityBTN.addEventListener('click', () => {
@@ -81,6 +119,32 @@ activityBTN.addEventListener('click', () => {
         renderLog();
     }
     
+});
+
+bioBtn.addEventListener('click', () => {
+    
+    const newBio = {
+        fecha: new Date().toLocaleDateString(),
+        peso: parseFloat(peso.value) || 0,
+        grasa: parseFloat(grasa.value) || 0,
+        sumatoriaPliegues: (parseFloat(triceps.value) || 0) + 
+                           (parseFloat(subescapular.value) || 0) + 
+                           (parseFloat(abdominal.value) || 0)
+    };
+
+    if (bioHistory.length > 0) {
+        const lastBio = bioHistory[bioHistory.length - 1];
+        if (newBio.sumatoriaPliegues < lastBio.sumatoriaPliegues) {
+            xp += 100; 
+            stats.discipline += 2;
+            stats.vitality += 2;
+        }
+    }
+
+    bioHistory.push(newBio);
+    addXP('rest'); // Usamos 'rest' o una categoría neutra para actualizar stats
+    renderBioTable(); // Esta función la crearemos luego para ver la tabla
+    alert("Datos biométricos sincronizados con el sistema.");
 });
 
 taskBTN.addEventListener('click', () => {
@@ -169,4 +233,8 @@ function toggleTaskStatus(index) {
         task.estado = "list-done";
     }
     renderTasks();
+}
+
+function xpNegative () {
+    newDay != activityLog;
 }

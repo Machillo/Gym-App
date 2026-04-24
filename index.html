@@ -30,11 +30,16 @@
       <h1>LIFE RPG</h1>
 
       <!-- HEADER -->
-      <h2>XP Total: <span id="xp-total">0</span></h2>
-      <div class="xp-bar-container">
-        <div id="xp-bar-fill"></div>
-      </div>
       <h2>Nivel: <span id="level">1</span></h2>
+      <h2>XP Total: <span id="xp-total">0</span></h2>
+      <div class="xp-container">
+        <div class="xp-info">
+          <span id="xp-current">0</span> / <span id="xp-required">1000</span> XP
+        </div>
+        <div class="xp-bar-track">
+          <div id="xp-bar-fill"></div>
+        </div>
+      </div>
 
       <div class="top-section">
         <!-- AVATAR -->
@@ -50,9 +55,11 @@
         <!-- STATS -->
         <div class="stats-section">
           <div>💪 Strength: <span id="stat-strength">0</span></div>
+          <div>⚡ Agility: <span id="stat-agility">0</span></div>
           <div>🧠 Intelligence: <span id="stat-intelligence">0</span></div>
-          <div>⚡ Discipline: <span id="stat-discipline">0</span></div>
-          <div>🎮 Skill: <span id="stat-skill">0</span></div>
+          <div>🔥 Discipline: <span id="stat-discipline">0</span></div>
+          <div>❤️ Vitality: <span id="stat-vitality">0</span></div>
+          <div>🏆 Prestige: <span id="stat-prestige">0</span></div>
         </div>
 
         <!-- ACTIVITY SECTION (XP) -->
@@ -64,11 +71,18 @@
           />
 
           <select id="activity-type">
-            <option value="strength">Gimnasio</option>
-            <option value="intelligence">Estudio</option>
-            <option value="discipline">Hábitos</option>
-            <option value="skill">Juegos</option>
-            <option value="strength">Deporte</option>
+            <optgroup label="Combate & Deporte">
+              <option value="mma_training">Entrenamiento MMA</option>
+              <option value="sparring">Sparring</option>
+              <option value="fight_pro">Pelea Profesional / Amateur</option>
+              <option value="strength">Gimnasio / Pesas</option>
+            </optgroup>
+            <optgroup label="Vida & Mente">
+              <option value="intelligence">Estudio / Proyectos</option>
+              <option value="discipline">Hábitos / Dieta</option>
+              <option value="rest">Descanso / Sueño</option>
+              <option value="skill">Juegos / Ocio</option>
+            </optgroup>
           </select>
 
           <input id="activity-date" type="date" />
@@ -79,6 +93,109 @@
             <h2>Historial de logros</h2>
             <ul id="activity-log"></ul>
           </div>
+        </div>
+
+        <!-- Medidas -->
+
+        <div class="biometric-panel">
+          <h3>EVALUACIÓN FÍSICA (ANTROPOMETRÍA)</h3>
+
+          <div class="bio-group">
+            <h4>BÁSICAS</h4>
+            <input type="number" id="bio-peso" placeholder="Peso (Kg)" />
+            <input type="number" id="bio-talla" placeholder="Talla (cm)" />
+            <input
+              type="number"
+              id="bio-grasa"
+              placeholder="Grasa Corporal (%)"
+            />
+          </div>
+
+          <div class="bio-group">
+            <h4>PERÍMETROS (cm)</h4>
+            <input
+              type="number"
+              id="bio-brazo-r"
+              placeholder="Brazo Relajado"
+            />
+            <input
+              type="number"
+              id="bio-brazo-f"
+              placeholder="Brazo Flexionado"
+            />
+            <input type="number" id="bio-antebrazo" placeholder="Antebrazo" />
+            <input
+              type="number"
+              id="bio-cintura"
+              placeholder="Cintura Mínima"
+            />
+            <input type="number" id="bio-cadera" placeholder="Cadera Máximo" />
+            <input type="number" id="bio-muslo" placeholder="Muslo Medial" />
+            <input
+              type="number"
+              id="bio-pantorrilla"
+              placeholder="Pantorrilla Máxima"
+            />
+          </div>
+
+          <div class="bio-group">
+            <h4>PLIEGUES (mm)</h4>
+            <div class="pliegues-grid">
+              <input type="number" id="bio-triceps" placeholder="Tríceps" />
+              <input
+                type="number"
+                id="bio-subescapular"
+                placeholder="Subescapular"
+              />
+              <input type="number" id="bio-biceps" placeholder="Bíceps" />
+              <input
+                type="number"
+                id="bio-cresta"
+                placeholder="Cresta Ilíaca"
+              />
+              <input
+                type="number"
+                id="bio-supraespinal"
+                placeholder="Supraespinal"
+              />
+              <input type="number" id="bio-abdominal" placeholder="Abdominal" />
+              <input
+                type="number"
+                id="bio-muslo-a"
+                placeholder="Muslo Anterior"
+              />
+              <input
+                type="number"
+                id="bio-pantorrilla-m"
+                placeholder="Pantorrilla Medial"
+              />
+            </div>
+          </div>
+
+          <button id="update-bio-btn">Sincronizar</button>
+        </div>
+      </div>
+      <div class="bio-history-container">
+        <div class="bio-history-header">
+          <h3>REGISTRO DE EVOLUCIÓN FÍSICA</h3>
+          <button id="clear-bio-history" class="btn-danger">Registrar</button>
+        </div>
+
+        <div class="bio-history-table-wrapper">
+          <table id="bio-history-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Peso (kg)</th>
+                <th>% Grasa Est.</th>
+                <th>Brazo (f)</th>
+                <th>Cintura</th>
+                <th>Muslo</th>
+                <th>Σ Pliegues</th>
+              </tr>
+            </thead>
+            <tbody id="bio-history-body"></tbody>
+          </table>
         </div>
       </div>
 
