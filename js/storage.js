@@ -1,42 +1,26 @@
-function saveData(){
-
-const data={
-xp,
-level,
-xpToNextLevel,
-stats,
-activity,
-tasks,
-bioHistory
-};
-
-localStorage.setItem(
-"cazadorGameState",
-JSON.stringify(data)
-);
-
+function saveData() {
+    const gameData = {
+        tasks,
+        activity,
+        bioHistory,
+        xp,
+        level,
+        xpToNextLevel,
+        stats
+    };
+    localStorage.setItem('cazadorGameState', JSON.stringify(gameData));
 }
 
-
-function loadData(){
-
-const saved=
-localStorage.getItem(
-"cazadorGameState"
-);
-
-if(!saved) return;
-
-const data=
-JSON.parse(saved);
-
-xp=data.xp||0;
-level=data.level||1;
-xpToNextLevel=data.xpToNextLevel||1000;
-
-Object.assign(
-stats,
-data.stats
-);
-
+function loadData() {
+    const saved = localStorage.getItem('cazadorGameState');
+    if (saved) {
+        const data = JSON.parse(saved);
+        tasks = data.tasks || [];
+        activity = data.activity || [];
+        bioHistory = data.bioHistory || [];
+        xp = data.xp || 0;
+        level = data.level || 1;
+        xpToNextLevel = data.xpToNextLevel || 1000;
+        Object.assign(stats, data.stats);
+    }
 }

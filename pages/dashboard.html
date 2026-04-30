@@ -1,82 +1,210 @@
-<!DOCTYPE html>
-</nav>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Life RPG Dashboard</title>
 
-<div class="container">
+    <link rel="stylesheet" href="/css/variables.css" />
+    <link rel="stylesheet" href="/css/layout.css" />
+    <link rel="stylesheet" href="/css/pages/dashboard.css" />
 
-<div class="design-panel">
-<button id="design-toggle-btn">DISEÑO</button>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-<div id="design-options" class="hidden">
-<button class="theme-btn" data-color="#00D4FF">AZUL</button>
-<button class="theme-btn" data-color="#FF00FF">ROSA</button>
-<button class="theme-btn" data-color="#00FF41">VERDE</button>
-</div>
-</div>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- NAV -->
+    <nav class="main-nav">
+      <div class="nav-logo">
+        <h2>LIFE RPG</h2>
+      </div>
 
-<h1>LIFE RPG</h1>
+      <ul class="nav-links">
+        <li><a href="dashboard.html">Home</a></li>
+        <li><a href="combat.html">Combat</a></li>
+        <li><a href="study.html">Study</a></li>
+        <li><a href="spirit.html">Spirit</a></li>
+        <li><a href="body.html">Body</a></li>
+        <li><a href="quests.html">Quests</a></li>
+      </ul>
 
-<h2>Nivel <span id="level">1</span></h2>
+      <div class="nav-user">
+        <span>Kenneth</span>
+        <button id="logout-btn">Logout</button>
+      </div>
+    </nav>
 
-<h3>XP <span id="xp-total">0</span></h3>
+    <div class="container">
+      <div class="design-panel">
+        <button id="design-toggle-btn">DISEÑO</button>
 
-<div class="xp-container">
-<div>
-<span id="xp-current">0</span>/<span id="xp-required">1000</span>
-</div>
+        <div id="design-options" class="hidden">
+          <button class="theme-btn" data-color="#00D4FF">AZUL</button>
+          <button class="theme-btn" data-color="#FF00FF">ROSA</button>
+          <button class="theme-btn" data-color="#00FF41">VERDE</button>
+          <button class="theme-btn" data-color="#9D00FF">MORADO</button>
+          <button class="theme-btn" data-color="#FF0000">ROJO</button>
+        </div>
+      </div>
 
-<div class="xp-bar-track">
-<div id="xp-bar-fill"></div>
-</div>
-</div>
+      <header class="dashboard-header">
+        <h1>LIFE RPG SYSTEM</h1>
 
-<div class="top-section">
+        <h2>
+          Nivel
+          <span id="level">1</span>
+        </h2>
 
-<div class="avatar-section">
-<img id="avatar-img"
-src="https://i.imgur.com/4AiXzf8.jpeg">
-</div>
+        <h3>
+          XP Total
+          <span id="xp-total">0</span>
+        </h3>
 
-<div class="stats-section">
-<div>Strength <span id="stat-strength">0</span></div>
-<div>Agility <span id="stat-agility">0</span></div>
-<div>Intelligence <span id="stat-intelligence">0</span></div>
-<div>Discipline <span id="stat-discipline">0</span></div>
-<div>Vitality <span id="stat-vitality">0</span></div>
-<div>Prestige <span id="stat-prestige">0</span></div>
-</div>
+        <div class="xp-container">
+          <div class="xp-info">
+            <span id="xp-current">0</span>
+            /
+            <span id="xp-required">1000</span>
+            XP
+          </div>
 
-</div>
+          <div class="xp-bar-track">
+            <div id="xp-bar-fill"></div>
+          </div>
+        </div>
+      </header>
 
-<div class="activity-section">
+      <section class="top-section">
+        <!-- AVATAR -->
 
-<input id="activity-input" placeholder="Actividad">
+        <div class="avatar-section card">
+          <h3>Avatar</h3>
 
-<select id="activity-type">
-<option value="mma_training">MMA</option>
-<option value="sparring">Sparring</option>
-<option value="strength">Gym</option>
-<option value="intelligence">Study</option>
-<option value="discipline">Habits</option>
-<option value="rest">Rest</option>
-</select>
+          <img id="avatar-img" src="/img/profile-kenneth.png" alt="avatar" />
 
-<input id="activity-date" type="date">
+          <h4 id="fighter-rank">Initiate</h4>
 
-<button id="activity-btn">
-Agregar
-</button>
+          <p>Next Rank: Amateur Fighter</p>
+        </div>
 
-</div>
+        <!-- CORE STATS -->
 
-<div class="history-section">
-<ul id="activity-log"></ul>
-</div>
+        <div class="stats-section card">
+          <h3>Core Stats</h3>
 
-</div>
+          <div>
+            💪 Strength
+            <span id="stat-strength">0</span>
+          </div>
 
-<script src="../js/storage.js"></script>
-<script src="../js/xp-system.js"></script>
-<script src="../js/app.js"></script>
+          <div>
+            ⚡ Agility
+            <span id="stat-agility">0</span>
+          </div>
 
-</body>
+          <div>
+            🧠 Intelligence
+            <span id="stat-intelligence">0</span>
+          </div>
+
+          <div>
+            🔥 Discipline
+            <span id="stat-discipline">0</span>
+          </div>
+
+          <div>
+            ❤️ Vitality
+            <span id="stat-vitality">0</span>
+          </div>
+
+          <div>
+            🏆 Prestige
+            <span id="stat-prestige">0</span>
+          </div>
+        </div>
+
+        <!-- LIFE DOMAINS -->
+
+        <div class="life-domains card">
+          <h3>Progress Layers</h3>
+
+          <div>🥋 Fighter Path Lv.1</div>
+          <div>💻 Programmer Path Lv.1</div>
+          <div>🙏 Spiritual Path Lv.1</div>
+          <div>🏋 Body Composition Lv.1</div>
+          <div>🎮 Gaming Path Lv.1</div>
+        </div>
+      </section>
+
+      <!-- QUICK ACTIVITY -->
+
+      <section class="activity-section card">
+        <h2>Log Activity</h2>
+
+        <input
+          id="activity-input"
+          type="text"
+          placeholder="Actividad realizada"
+        />
+
+        <select id="activity-type">
+          <optgroup label="Combat">
+            <option value="mma_training">MMA Training</option>
+
+            <option value="sparring">Sparring</option>
+
+            <option value="strength">Gym</option>
+          </optgroup>
+
+          <optgroup label="Life">
+            <option value="intelligence">Study</option>
+
+            <option value="discipline">Habits</option>
+
+            <option value="rest">Recovery</option>
+          </optgroup>
+        </select>
+
+        <input id="activity-date" type="date" />
+
+        <button id="activity-btn">Agregar XP</button>
+      </section>
+
+      <!-- RECENT LOG -->
+
+      <section class="history-section card">
+        <h2>Recent Activity Log</h2>
+
+        <ul id="activity-log"></ul>
+      </section>
+
+      <!-- QUICK PANELS -->
+
+      <section class="quick-panels">
+        <div class="panel-card">
+          <h3>Current Quests</h3>
+          <p>3 Active Missions</p>
+        </div>
+
+        <div class="panel-card">
+          <h3>Body Progress</h3>
+          <p>14.8% Body Fat</p>
+        </div>
+
+        <div class="panel-card">
+          <h3>Streak</h3>
+          <p>12 Days</p>
+        </div>
+      </section>
+    </div>
+
+    <script src="/js/storage.js"></script>
+    <script src="/js/xp-system.js"></script>
+    <script src="/js/app.js"></script>
+  </body>
 </html>
