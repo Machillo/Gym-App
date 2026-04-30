@@ -3,9 +3,151 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Combat System</title>
+
+    <link rel="stylesheet" href="/css/variables.css" />
+    <link rel="stylesheet" href="/css/layout.css" />
+    <link rel="stylesheet" href="/css/pages/combat.css" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
+
   <body>
-    <h1>Combat Module Coming Soon</h1>
+    <!-- NAV -->
+    <nav class="main-nav">
+      <div class="nav-logo">
+        <h2>LIFE RPG</h2>
+      </div>
+
+      <ul class="nav-links">
+        <li><a href="dashboard.html">Home</a></li>
+        <li><a href="combat.html">Combat</a></li>
+        <li><a href="study.html">Study</a></li>
+        <li><a href="spirit.html">Spirit</a></li>
+        <li><a href="body.html">Body</a></li>
+        <li><a href="quests.html">Quests</a></li>
+      </ul>
+
+      <div class="nav-user">
+        <span>Kenneth</span>
+        <button id="logout-btn">Logout</button>
+      </div>
+    </nav>
+
+    <div class="container">
+      <!-- 🥋 COMBAT OVERVIEW -->
+      <section class="combat-overview card">
+        <h1>COMBAT SYSTEM</h1>
+
+        <div class="overview-grid">
+          <div class="overview-item">
+            <span>🥋 Rank</span>
+            <h3 id="fighter-rank">Initiate</h3>
+          </div>
+
+          <div class="overview-item">
+            <span>🏆 Record</span>
+            <h3 id="fighter-record">0W - 0L</h3>
+          </div>
+
+          <div class="overview-item">
+            <span>🔥 Streak</span>
+            <h3 id="fighter-streak">0</h3>
+          </div>
+
+          <div class="overview-item">
+            <span>⚡ Status</span>
+            <h3 id="fighter-status">Fresh</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🧍 FIGHTER MODEL -->
+      <section class="fighter-section card">
+        <h2>Your Fighter</h2>
+
+        <div class="fighter-container">
+          <div id="fighter-model" class="fighter idle">
+            <img src="/img/profile-kenneth.png" alt="fighter" />
+          </div>
+
+          <div class="fighter-actions">
+            <button id="btn-punch">👊 Punch</button>
+            <button id="btn-kick">🦵 Kick</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🎮 QUICK ACTIONS -->
+      <section class="combat-actions card">
+        <h2>Training & Actions</h2>
+
+        <div class="actions-grid">
+          <button class="action-btn" data-type="sparring">🥊 Sparring</button>
+          <button class="action-btn" data-type="strength">🏋️ Strength</button>
+          <button class="action-btn" data-type="bjj">🥋 BJJ</button>
+          <button class="action-btn" data-type="boxing">🥊 Boxing</button>
+          <button class="action-btn" data-type="muaythai">🦵 Muay Thai</button>
+          <button class="action-btn fight-btn" data-type="fight">
+            ⚔️ Fight
+          </button>
+        </div>
+      </section>
+
+      <!-- 📊 COMBAT STATS -->
+      <section class="combat-stats card">
+        <h2>Combat Stats</h2>
+
+        <div class="stats-grid">
+          <div>🥊 Striking <span id="stat-striking">0</span></div>
+          <div>🤼 Grappling <span id="stat-grappling">0</span></div>
+          <div>🫀 Cardio <span id="stat-cardio">0</span></div>
+          <div>🧠 Fight IQ <span id="stat-fightiq">0</span></div>
+        </div>
+      </section>
+
+      <!-- 📜 COMBAT HISTORY -->
+      <section class="combat-history card">
+        <h2>Recent Activity</h2>
+
+        <ul id="combat-log"></ul>
+      </section>
+
+      <!-- 📈 PROGRESS GRAPH (placeholder) -->
+      <section class="combat-graph card">
+        <h2>Monthly Progress</h2>
+
+        <canvas id="combatChart"></canvas>
+      </section>
+    </div>
+
+    <!-- 🧠 MODAL -->
+    <div id="activity-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="modal-title">Log Activity</h2>
+
+        <label>Intensity</label>
+        <select id="modal-intensity">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <label>Date</label>
+        <input type="date" id="modal-date" />
+
+        <div class="modal-actions">
+          <button id="confirm-action">Confirm</button>
+          <button id="cancel-action">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/js/storage.js"></script>
+    <script src="/js/xp-system.js"></script>
+    <script src="/js/combat.js"></script>
   </body>
 </html>
