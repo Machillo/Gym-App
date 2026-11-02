@@ -32,6 +32,16 @@ struct AppEnvironment {
     nonisolated static var isUnitTesting: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
     nonisolated static var isTesting: Bool { isUITesting || isUnitTesting }
 
+    #if DEBUG
+    /// XP de `-priorHistoryXP <n>`, para acreditar el historial previo desde el lanzamiento.
+    /// Sin botón en la app a propósito: subir de nivel a mano rompería el juego.
+    nonisolated static var priorHistoryXPArgument: Int? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-priorHistoryXP"), index + 1 < arguments.count else { return nil }
+        return Int(arguments[index + 1])
+    }
+    #endif
+
     static func make() -> AppEnvironment {
         let container: ModelContainer
         do {

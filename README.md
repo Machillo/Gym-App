@@ -111,6 +111,10 @@ Se evalúan al abrir la app y al volver a primer plano, día cerrado por día ce
 
 Si el XP cae por debajo del piso del rango, perdés el rango y tenés que volver a pasar la prueba (sin repetir el tiempo mínimo). Piso absoluto: Rango E, nivel 1. Las sesiones libres dan XP pero no borran faltas.
 
+### Historial previo
+
+El entrenamiento anterior a la app se reconoce una sola vez, como XP, sin botón en la app: en un build de desarrollo se lanza con `-priorHistoryXP <xp>`. Da por superadas las pruebas de los rangos alcanzados, pero el tiempo mínimo y los requisitos de la siguiente prueba cuentan desde ese día. No es una sesión: no toca racha ni atributos.
+
 ### Pruebas de ascenso
 Al llegar al último nivel de un rango quedás topado; el XP extra se guarda como desborde (máximo 1 nivel). La prueba se habilita tras el tiempo mínimo en el rango y se supera sola cuando registrás la sesión que completa el último requisito:
 

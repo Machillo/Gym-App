@@ -434,6 +434,23 @@ final class GameService {
         }
     }
 
+    // MARK: - Historial previo
+
+    /// Acredita una sola vez el entrenamiento anterior a la app. No es una sesión: no toca racha,
+    /// atributos, topes ni los requisitos de la siguiente prueba.
+    func applyPriorHistory(xp: Int) {
+        guard let player = player(), player.priorHistoryXP == nil, xp > 0 else { return }
+        var progress = player.progress
+        let events = progress.applyPriorHistory(xp: xp, now: now)
+        player.progress = progress
+        player.priorHistoryXP = xp
+        log(.gain, "Historial previo reconocido: +\(xp) XP. Entrás en \(progress.position.title).", xpDelta: xp, player: player)
+        announce(events, player: player)
+        refreshTrials(player: player)
+        for trial in trials() where trial.state == .passed && trial.passedAt == nil { trial.passedAt = now }
+        save()
+    }
+
     // MARK: - Modo lesión
 
     func startInjury(reason: String, until: Date) {

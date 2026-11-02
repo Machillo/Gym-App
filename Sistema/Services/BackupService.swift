@@ -23,6 +23,7 @@ struct BackupDocument: Codable, Equatable {
         var strength: Double, endurance: Double, technique: Double, discipline: Double, vitality: Double
         var ledger: PenaltyLedger, injuries: [InjuryPeriod]
         var lastCalculatedAt: Date, reminderHour: Int, reminderMinute: Int
+        var priorHistoryXP: Int?
     }
 
     struct ItineraryDTO: Codable, Equatable {
@@ -81,7 +82,7 @@ enum BackupService {
                         unlockedRankRaw: p.unlockedRankRaw, highestRankRaw: p.highestRankRaw, rankEnteredAt: p.rankEnteredAt,
                         strength: p.strength, endurance: p.endurance, technique: p.technique, discipline: p.discipline,
                         vitality: p.vitality, ledger: p.ledger, injuries: p.injuries, lastCalculatedAt: p.lastCalculatedAt,
-                        reminderHour: p.reminderHour, reminderMinute: p.reminderMinute)
+                        reminderHour: p.reminderHour, reminderMinute: p.reminderMinute, priorHistoryXP: p.priorHistoryXP)
         }
         let itineraries: [D.ItineraryDTO] = try context.fetch(FetchDescriptor<Itinerary>()).map { i in
             D.ItineraryDTO(id: i.id, name: i.name, startDate: i.startDate, endDate: i.endDate, isActive: i.isActive,
@@ -172,6 +173,7 @@ enum BackupService {
             player.lastCalculatedAt = p.lastCalculatedAt
             player.reminderHour = p.reminderHour
             player.reminderMinute = p.reminderMinute
+            player.priorHistoryXP = p.priorHistoryXP
             context.insert(player)
         }
         for i in doc.itineraries {

@@ -17,6 +17,9 @@ struct RootView: View {
             SystemAnnouncementOverlay()
         }
         .task {
+            #if DEBUG
+            if let xp = AppEnvironment.priorHistoryXPArgument { game.applyPriorHistory(xp: xp) }
+            #endif
             game.evaluate()
             if !AppEnvironment.isTesting { game.notifications.requestAuthorization() }
         }

@@ -76,6 +76,18 @@ struct PlayerProgress: Codable, Equatable {
         return finish(from: before, now: now)
     }
 
+    /// Reconoce entrenamiento anterior a la app: suma el XP y da por superadas las pruebas de los rangos
+    /// alcanzados. El tiempo mínimo de la siguiente prueba cuenta desde hoy.
+    @discardableResult
+    mutating func applyPriorHistory(xp: Int, now: Date) -> [ProgressEvent] {
+        guard xp > 0 else { return [] }
+        let before = position
+        totalXP = min(totalXP + xp, LevelCurve.maxTotalXP)
+        unlockedRank = max(unlockedRank, position.rank)
+        highestRankEverUnlocked = max(highestRankEverUnlocked, unlockedRank)
+        return finish(from: before, now: now)
+    }
+
     /// Supera la prueba de ascenso: habilita el siguiente rango y libera el desborde.
     @discardableResult
     mutating func passTrial(now: Date) -> [ProgressEvent] {

@@ -46,6 +46,8 @@ final class Player {
     var lastCalculatedAt: Date
     var reminderHour: Int
     var reminderMinute: Int
+    /// XP reconocido por entrenamiento anterior a la app. Se acredita una sola vez.
+    var priorHistoryXP: Int?
 
     init(name: String, now: Date) {
         id = UUID()
