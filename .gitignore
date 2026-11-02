@@ -1,0 +1,9 @@
+# Xcode (el proyecto se genera con XcodeGen)
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+*.xcresult
+.DS_Store
+__pycache__/
