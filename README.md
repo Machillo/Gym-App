@@ -13,7 +13,7 @@ project.yml
 Sistema/
   App/        punto de entrada e inyección de dependencias
   Models/     entidades SwiftData
-  Engine/     lógica pura: curva, rangos, cumplimiento, XP, penalizaciones, pruebas
+  Engine/     lógica pura: curva, rangos, cumplimiento, XP, penalizaciones, pruebas, programas
   Services/   juego (orquestación), notificaciones locales, respaldo JSON, reloj inyectable
   Views/      pantallas y componentes
   Resources/  íconos y colores
@@ -57,11 +57,40 @@ Con el Personal Team el perfil vence a los 7 días y la app deja de abrir. Para 
 
 Si cambiás el bundle ID, iOS lo trata como otra app (datos vacíos): importá el respaldo.
 
+## Programas del gimnasio
+
+Un programa agrupa los días de tu rutina y su fecha de cambio. Está en Entrenar > Rutinas > **+** > *Programa completo (pegar texto)*: escribís o pegás todo de una vez y revisás la vista previa antes de guardar. Para copiar desde una captura, en Fotos mantené presionado el texto y tocá Copiar.
+
+```
+Día 1 - Bi Series
+Full Body
+BI SERIES X 3 ROUNDS
+Trap bar deadlift 6 reps
+Bent over row DB
+10 reps
+
+Día 2 - AMRAP
+AMRAP 15 MIN ON
+Gorilla Row KB 12 reps c/l
+DB Thrusters 12 reps 1 min
+```
+
+El ejercicio y su medida pueden ir en una o dos líneas. Después de la medida van la nota (`c/l`) y, al final, el descanso (`1 min`). En una bi-serie, cada par de ejercicios es un bloque.
+
+*Usar en un itinerario* precarga el plan semanal, con la fecha de cambio como fin. El itinerario sigue las reglas de siempre: al vencer tenés 48 h de gracia para cargar el siguiente.
+
+El programa PED-FighterWOD se carga una sola vez al abrir la app (`Sistema/Engine/ProgramTemplates.swift`).
+
+### Peso en kg o lb
+
+Cada campo de peso tiene su botón kg/lb. Internamente todo se guarda en kg, así las marcas y el e1RM comparan el peso real sin importar la unidad en que lo escribiste. Cambiar el botón convierte lo que se ve (25 kg → 55.12 lb), no el peso.
+
 ## Cómo funciona
 
 ### Cumplimiento
 - **Fuerza**: reps hechas / (series × reps prescritas).
-- **Circuito**: (rondas hechas / rondas prescritas) × promedio por ejercicio de reps o tiempo real / prescrito.
+- **Circuito, bi-serie y tabata**: (rondas hechas / rondas prescritas) × promedio por ejercicio de reps o tiempo real / prescrito.
+- **AMRAP**: tiempo real / tiempo prescrito. Las rondas completadas se guardan como resultado, no como meta.
 - **Cardio**: distancia real / prescrita (o tiempo si no hay distancia).
 - **Clase**: duración real / prescrita.
 - Cada bloque topa en 100 % (lo real se guarda igual para el historial). La sesión es el promedio ponderado por los minutos estimados de cada bloque.
