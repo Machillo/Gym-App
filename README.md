@@ -1,0 +1,138 @@
+# Sistema
+
+App personal de entrenamiento gamificada para iPhone (iOS 17+). Subís de nivel y de rango según lo que entrenás (pesas, circuitos, cardio, clases de box y Muay Thai), con penalizaciones duras si no cumplís. Todo vive en el teléfono: sin cuentas, sin servidor.
+
+- Swift 5.9 · SwiftUI · SwiftData · Swift Charts · sin dependencias de terceros.
+- Proyecto generado con [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`project.yml`); el `.xcodeproj` no se versiona.
+- Zona horaria del motor: `America/Costa_Rica`. Semanas de lunes a domingo.
+
+## Estructura
+
+```
+project.yml
+Sistema/
+  App/        punto de entrada e inyección de dependencias
+  Models/     entidades SwiftData
+  Engine/     lógica pura: curva, rangos, cumplimiento, XP, penalizaciones, pruebas
+  Services/   juego (orquestación), notificaciones locales, respaldo JSON, reloj inyectable
+  Views/      pantallas y componentes
+  Resources/  íconos y colores
+SistemaTests/    motor, penalizaciones, catálogo, respaldo, calibración
+SistemaUITests/  smoke test
+scripts/calibrate.py   simulador rápido de la progresión (espejo del motor)
+```
+
+## Compilar y probar (Mac con Xcode 16 recomendado; 15 como mínimo)
+
+```bash
+brew install xcodegen
+xcodegen generate
+xcodebuild -scheme Sistema -destination 'platform=iOS Simulator,name=iPhone 15' build
+xcodebuild -scheme Sistema -destination 'platform=iOS Simulator,name=iPhone 15' test
+```
+
+Si no tenés ese simulador, listá los disponibles con `xcrun simctl list devices available` y cambiá el `name=`.
+
+## Instalar en tu iPhone con la cuenta gratuita (Personal Team)
+
+1. `xcodegen generate` y abrí `Sistema.xcodeproj`.
+2. Xcode > Settings > Accounts: agregá tu Apple ID.
+3. Seleccioná el target **Sistema** > *Signing & Capabilities*:
+   - **Team**: tu *Personal Team*.
+   - **Bundle Identifier**: debe ser único. Por defecto es `com.kennethalvarado.sistema`; si Xcode dice que no está disponible, cambialo (por ejemplo `com.tunombre.sistema.2026`). Para no repetirlo cada vez que regenerás el proyecto, editá `PRODUCT_BUNDLE_IDENTIFIER` y `DEVELOPMENT_TEAM` en `project.yml`.
+4. Conectá el iPhone por cable, desbloquealo y aceptá "Confiar en esta computadora".
+5. En el iPhone activá el **Modo de desarrollador** (Ajustes > Privacidad y seguridad > Modo de desarrollador) y reiniciá.
+6. Elegí tu iPhone como destino y presioná **Run** (⌘R).
+7. La primera vez iOS bloquea la app: andá a **Ajustes > General > VPN y gestión de dispositivos**, tocá tu Apple ID y **Confiar**.
+
+La app no usa capacidades de cuenta paga (nada de iCloud, HealthKit, push remotas, App Groups ni widgets).
+
+## Reinstalar cada 7 días sin perder datos
+
+Con el Personal Team el perfil vence a los 7 días y la app deja de abrir. Para renovarla:
+
+1. Conectá el iPhone y presioná **Run** otra vez en Xcode (mismo bundle ID y mismo team).
+2. **No desinstales la app**: instalar encima conserva la base de datos de SwiftData.
+3. Por seguridad, exportá un respaldo de vez en cuando: Ajustes > Respaldo > *Exportar respaldo JSON* (guardalo en Archivos). Si alguna vez tenés que desinstalar o cambiar el bundle ID, lo recuperás con *Importar respaldo JSON*.
+
+Si cambiás el bundle ID, iOS lo trata como otra app (datos vacíos): importá el respaldo.
+
+## Cómo funciona
+
+### Cumplimiento
+- **Fuerza**: reps hechas / (series × reps prescritas).
+- **Circuito**: (rondas hechas / rondas prescritas) × promedio por ejercicio de reps o tiempo real / prescrito.
+- **Cardio**: distancia real / prescrita (o tiempo si no hay distancia).
+- **Clase**: duración real / prescrita.
+- Cada bloque topa en 100 % (lo real se guarda igual para el historial). La sesión es el promedio ponderado por los minutos estimados de cada bloque.
+- Más peso que lo prescrito con las mismas reps queda marcado como **mejora** en el historial del ejercicio.
+
+### XP
+`XP = base del tipo × factor de duración × factor de intensidad × cumplimiento`, +10 % antes de las 6 a. m. Topes: 200 XP por día y 700 XP por semana.
+
+### Penalizaciones
+Se evalúan al abrir la app y al volver a primer plano, día cerrado por día cerrado (idempotente). El día del onboarding y el día en curso nunca se castigan.
+
+| Situación | Efecto |
+|---|---|
+| Día planeado sin sesión | −100 XP, falta completa, Zona de penalización + misión de castigo (25 min) |
+| Sesión planeada con < 50 % | −50 % del XP de esa sesión, media falta |
+| Misión de castigo sin cumplir en 48 h | otra falta completa |
+| 3 faltas (sumando medias) en una semana | −1 nivel (otro cada 3 faltas más) |
+| Itinerario vencido + 48 h de gracia | falta por cada día que habría sido de entrenamiento |
+| Modo lesión/enfermo | congela penalizaciones y racha (máx. 14 días por activación) |
+
+Si el XP cae por debajo del piso del rango, perdés el rango y tenés que volver a pasar la prueba (sin repetir el tiempo mínimo). Piso absoluto: Rango E, nivel 1. Las sesiones libres dan XP pero no borran faltas.
+
+### Pruebas de ascenso
+Al llegar al último nivel de un rango quedás topado; el XP extra se guarda como desborde (máximo 1 nivel). La prueba se habilita tras el tiempo mínimo en el rango y se supera sola cuando registrás la sesión que completa el último requisito:
+
+| Rango destino | Tiempo mínimo en el rango anterior | Requisitos |
+|---|---|---|
+| D | 1 mes | 3 semanas seguidas ≥ 70 % |
+| C | 3 meses | 6 semanas ≥ 75 % · mejorar 5 % una marca |
+| B | 6 meses | 8 semanas ≥ 80 % · mejorar 10 % · 8 clases |
+| A | 12 meses | 12 semanas ≥ 85 % · mejorar 15 % · 20 clases |
+| S | 24 meses | 16 semanas ≥ 85 % · mejorar 20 % · 40 clases |
+| SS | 36 meses | 24 semanas ≥ 90 % · mejorar 25 % · 60 clases |
+
+"Marca" = e1RM (Epley) de un ejercicio o ritmo de cardio (min/km), comparado con tu mejor marca antes del rango (o la primera dentro del rango).
+
+## Constantes finales de progresión
+
+Todas viven en `Sistema/Engine/Progression.swift` y se replican en `scripts/calibrate.py`.
+
+| Constante | Valor |
+|---|---|
+| XP para pasar de L a L+1 | `round(50 + 7.3 × L^1.5)` (coeficiente ajustado de 7.0 a 7.3) |
+| Niveles | 100 (XP total para el 100: 293 308) |
+| Base por tipo de sesión | 100 XP (fuerza, circuito, cardio, clase) |
+| Factor de duración | minutos / 60, entre 0.25 y 1.5 |
+| Factor de intensidad | 1 + 0.05 × (RPE − 7), entre 0.85 y 1.15 |
+| Bonus madrugada | +10 % antes de las 6:00 |
+| Topes | 200 XP/día · 700 XP/semana |
+| Falta completa | −100 XP |
+| Media falta | −50 % del XP de la sesión (cumplimiento < 50 %) |
+| Bajada de nivel | cada 3 faltas en una semana calendario |
+| Ventana de misión de castigo | 48 h, mínimo 20 min |
+| Gracia por itinerario vencido | 2 días |
+| Modo lesión | máx. 14 días por activación |
+
+Rangos: E 1–9 · D 10–24 · C 25–44 · B 45–64 · A 65–84 · S 85–99 · SS 100. Cada rango se divide en III → II → I (el sobrante de niveles va a las divisiones altas, p. ej. C: III 25–30, II 31–37, I 38–44).
+
+### Calibración (5 sesiones de 60 min por semana, RPE 7)
+
+Resultado de `python scripts/calibrate.py` (lo mismo verifica `CalibrationTests`):
+
+| Perfil | D | C | B | A | S | SS |
+|---|---|---|---|---|---|---|
+| 100 % | 1.0 meses | 4.9 meses | 1.59 años | 3.89 años | 7.54 años | 11.27 años |
+| 100 % entrenando a las 4:30 | 1.0 meses | 4.6 meses | 1.46 años | 3.55 años | 6.86 años | 10.26 años |
+| 80 % | 1.0 meses | 5.8 meses | 1.97 años | 4.84 años | 9.40 años | 14.07 años |
+| 60 % | 1.0 meses | 7.5 meses | 2.60 años | 6.43 años | 12.51 años | 18.73 años |
+
+Con el coeficiente original (7.0) el perfil perfecto ya caía en la tabla, pero entrenando antes de las 6 a. m. llegaba a SS en 9.8 años; por eso se subió a 7.3. La calibración asume que los requisitos de cada prueba se cumplen apenas se habilita.
+
+## Datos de ejemplo
+
+Solo en builds Debug: Ajustes > Depuración > activá *Herramientas de datos de ejemplo* (apagado por defecto) y tocá *Cargar datos de ejemplo*.
