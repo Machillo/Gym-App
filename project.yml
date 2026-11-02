@@ -12,7 +12,7 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     # Poné acá el Team ID de tu Personal Team (o elegilo en Xcode > Signing & Capabilities).
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: UZ9P89YR3C
 targets:
   Sistema:
     type: application
