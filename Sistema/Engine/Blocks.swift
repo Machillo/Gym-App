@@ -179,6 +179,16 @@ struct RoutineBlock: Codable, Hashable, Identifiable {
         return b
     }
 
+    /// Bloque de fuerza o circuito con algún ejercicio todavía sin nombre.
+    var hasUnnamedExercise: Bool {
+        func isBlank(_ name: String) -> Bool { name.trimmingCharacters(in: .whitespaces).isEmpty }
+        switch kind {
+        case .strength: return isBlank(strength.exerciseName)
+        case .circuit: return circuit.exercises.contains { isBlank($0.exerciseName) }
+        case .cardio, .classSession: return false
+        }
+    }
+
     /// Nombre para encabezados: el título del bloque o su tipo.
     var displayName: String {
         guard kind == .circuit else { return kind.name }
@@ -189,7 +199,8 @@ struct RoutineBlock: Codable, Hashable, Identifiable {
         switch kind {
         case .strength:
             let w = strength.weight > 0 ? " @ \(Format.weight(strength.weight))" : ""
-            return "\(strength.exerciseName) \(strength.sets)×\(strength.reps)\(w)"
+            let name = strength.exerciseName.isEmpty ? "Sin nombre" : strength.exerciseName
+            return "\(name) \(strength.sets)×\(strength.reps)\(w)"
         case .circuit:
             let prefix = circuit.title.map { "\($0): " } ?? ""
             let count = Format.count(circuit.exercises.count, "ejercicio")

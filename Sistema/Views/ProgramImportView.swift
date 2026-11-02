@@ -58,16 +58,7 @@ struct ProgramImportView: View {
             }
             ForEach(Array(days.enumerated()), id: \.offset) { _, day in
                 Section(day.name) {
-                    ForEach(day.blocks) { block in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(block.summary).font(.subheadline.bold())
-                            ForEach(block.circuit.exercises) { exercise in
-                                Text("\(exercise.exerciseName): \(exercise.prescriptionText.isEmpty ? "sin medida" : exercise.prescriptionText)")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.secondaryText)
-                            }
-                        }
-                    }
+                    ForEach(day.blocks) { BlockPreview(block: $0) }
                 }
             }
         }
@@ -90,6 +81,22 @@ struct ProgramImportView: View {
             guard !loaded else { return }
             loaded = true
             changeDate = SistemaCalendar.addDays(28, to: game.now)
+        }
+    }
+}
+
+/// Cómo se interpretó un bloque escrito o pegado.
+struct BlockPreview: View {
+    let block: RoutineBlock
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(block.summary).font(.subheadline.bold())
+            ForEach(block.circuit.exercises) { exercise in
+                Text("\(exercise.exerciseName): \(exercise.prescriptionText.isEmpty ? "sin medida" : exercise.prescriptionText)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+            }
         }
     }
 }

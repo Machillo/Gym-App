@@ -1,6 +1,6 @@
 # Sistema
 
-App personal de entrenamiento gamificada para iPhone (iOS 17+). Subís de nivel y de rango según lo que entrenás (pesas, circuitos, cardio, clases de box y Muay Thai), con penalizaciones duras si no cumplís. Todo vive en el teléfono: sin cuentas, sin servidor.
+App personal de entrenamiento gamificada para iPhone (iOS 17+). La app no te da rutinas: vos le pasás las tuyas y ella les da seguimiento. Lo único que impone son los ejercicios de la misión de castigo cuando no cumplís. Subís de nivel y de rango según lo que entrenás (pesas, circuitos, cardio, clases de box y Muay Thai), con penalizaciones duras si no cumplís. Todo vive en el teléfono: sin cuentas, sin servidor.
 
 - Swift 5.9 · SwiftUI · SwiftData · Swift Charts · sin dependencias de terceros.
 - Proyecto generado con [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`project.yml`); el `.xcodeproj` no se versiona.
@@ -78,8 +78,6 @@ DB Thrusters 12 reps 1 min
 El ejercicio y su medida pueden ir en una o dos líneas. Después de la medida van la nota (`c/l`) y, al final, el descanso (`1 min`). En una bi-serie, cada par de ejercicios es un bloque.
 
 *Usar en un itinerario* precarga el plan semanal, con la fecha de cambio como fin. El itinerario sigue las reglas de siempre: al vencer tenés 48 h de gracia para cargar el siguiente.
-
-El programa PED-FighterWOD se carga una sola vez al abrir la app (`Sistema/Engine/ProgramTemplates.swift`).
 
 ### Peso en kg o lb
 

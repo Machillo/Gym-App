@@ -17,7 +17,6 @@ struct RootView: View {
             SystemAnnouncementOverlay()
         }
         .task {
-            if !AppEnvironment.isTesting { game.seedProgramsIfNeeded() }
             game.evaluate()
             if !AppEnvironment.isTesting { game.notifications.requestAuthorization() }
         }

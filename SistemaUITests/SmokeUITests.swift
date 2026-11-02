@@ -1,6 +1,6 @@
 import XCTest
 
-/// Onboarding → itinerario y rutina → registrar la misión de hoy → el XP sube.
+/// Onboarding → pasar la rutina propia e itinerario → registrar la misión de hoy → el XP sube.
 @MainActor
 final class SmokeUITests: XCTestCase {
     override func setUp() {
@@ -20,7 +20,12 @@ final class SmokeUITests: XCTestCase {
 
         let routineName = app.textFields["onboarding.routineName"]
         XCTAssertTrue(routineName.waitForExistence(timeout: 5))
-        app.buttons["onboarding.add.strength"].tap()
+        routineName.tap()
+        routineName.typeText("Rutina UI")
+        let routineText = app.textViews["onboarding.routineText"]
+        routineText.tap()
+        routineText.typeText("Sentadilla 10 reps")
+        app.navigationBars.firstMatch.tap()
         app.buttons["onboarding.routineNext"].tap()
 
         let finish = app.buttons["onboarding.finish"]

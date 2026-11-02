@@ -210,16 +210,6 @@ final class GameService {
         return saved
     }
 
-    /// Carga una sola vez el programa actual del gimnasio. Si lo borrás, no vuelve a aparecer.
-    func seedProgramsIfNeeded(defaults: UserDefaults = .standard) {
-        guard !defaults.bool(forKey: ProgramTemplates.seedKey) else { return }
-        defaults.set(true, forKey: ProgramTemplates.seedKey)
-        let template = ProgramTemplates.pedFighterWOD
-        guard !routines().contains(where: { $0.programName == template.name }) else { return }
-        seedCatalogIfNeeded()
-        saveProgram(name: template.name, changeDate: template.changeDate, days: template.days)
-    }
-
     func isRoutineInUse(_ routine: Routine) -> Bool {
         activeItinerary()?.plan.contains { $0.routineID == routine.id } ?? false
     }
@@ -484,9 +474,8 @@ final class GameService {
         rescheduleNotifications()
     }
 
-    func resetAll(defaults: UserDefaults = .standard) {
+    func resetAll() {
         BackupService.deleteAll(in: context)
-        defaults.removeObject(forKey: ProgramTemplates.seedKey)
         announcements.removeAll()
         save()
         notifications.replaceAll(with: [])

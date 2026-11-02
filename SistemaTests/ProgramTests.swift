@@ -7,15 +7,11 @@ final class ProgramTests: XCTestCase {
     private var container: ModelContainer!
     private var clock: FixedDateProvider!
     private var game: GameService!
-    private var defaults: UserDefaults!
-    private let suite = "ProgramTests"
 
     override func setUp() async throws {
         container = try SistemaSchema.makeContainer(inMemory: true)
         clock = FixedDateProvider(T.day(0, hour: 6.5))
         game = GameService(context: container.mainContext, clock: clock, notifications: SilentNotificationService())
-        defaults = UserDefaults(suiteName: suite)
-        defaults.removePersistentDomain(forName: suite)
     }
 
     // MARK: Unidades
@@ -88,7 +84,7 @@ final class ProgramTests: XCTestCase {
     // MARK: Programa cargado
 
     func testTemplateMatchesGymProgram() {
-        let days = ProgramTemplates.pedFighterWOD.days
+        let days = ProgramFixture.days
         XCTAssertEqual(days.map { $0.blocks.count }, [5, 1, 2, 1])
         XCTAssertEqual(days[0].blocks.prefix(4).map(\.circuit.rounds), [3, 3, 3, 3])
         XCTAssertEqual(days[1].blocks[0].circuit.exercises.count, 9)
@@ -101,20 +97,33 @@ final class ProgramTests: XCTestCase {
         }
     }
 
-    func testSeedRunsOnceAndDoesNotReturnAfterDeleting() {
-        game.seedProgramsIfNeeded(defaults: defaults)
-        XCTAssertEqual(game.routines().filter { $0.programName == "PED-FighterWOD" }.count, 4)
-        XCTAssertTrue(game.exercises().contains { $0.name == "Sentadilla" }, "el catálogo inicial también se carga")
-        game.seedProgramsIfNeeded(defaults: defaults)
-        XCTAssertEqual(game.routines().count, 4)
-        for routine in game.routines() { game.deleteRoutine(routine) }
-        game.seedProgramsIfNeeded(defaults: defaults)
-        XCTAssertEqual(game.routines().count, 0)
+    /// La app no trae rutinas: solo existen las que pasa el usuario.
+    func testNewPlayerHasNoRoutinesOrItinerary() {
+        game.createPlayer(name: "Tester")
+        game.evaluate()
+        XCTAssertTrue(game.routines().isEmpty)
+        XCTAssertNil(game.activeItinerary())
+    }
+
+    func testBlankBlocksDoNotSuggestExercises() {
+        for kind in [BlockKind.strength, .circuit] {
+            XCTAssertTrue(BlockTemplates.defaultBlock(kind).hasUnnamedExercise, kind.name)
+        }
+        for format in CircuitFormat.allCases {
+            XCTAssertTrue(BlockTemplates.defaultBlock(format: format).hasUnnamedExercise, format.name)
+        }
+    }
+
+    func testResetLeavesNoRoutines() {
+        game.createPlayer(name: "Tester")
+        game.saveProgram(name: ProgramFixture.name, changeDate: nil, days: ProgramFixture.days)
+        game.resetAll()
+        XCTAssertTrue(game.routines().isEmpty)
     }
 
     func testRoutineInActiveItineraryCannotBeDeleted() {
         game.createPlayer(name: "Tester")
-        let days = game.saveProgram(name: "P", changeDate: nil, days: ProgramTemplates.pedFighterWOD.days)
+        let days = game.saveProgram(name: "P", changeDate: nil, days: ProgramFixture.days)
         let plan = ProgramSchedule.plan(routineIDs: [days[0].id], on: [.monday])
         game.createItinerary(name: "I", start: clock.now, end: T.day(10), plan: plan)
         game.deleteRoutine(days[0])
@@ -125,13 +134,12 @@ final class ProgramTests: XCTestCase {
 
     func testProgramSurvivesBackupRoundTrip() throws {
         game.createPlayer(name: "Tester")
-        let template = ProgramTemplates.pedFighterWOD
-        game.saveProgram(name: template.name, changeDate: template.changeDate, days: template.days)
+        game.saveProgram(name: ProgramFixture.name, changeDate: ProgramFixture.changeDate, days: ProgramFixture.days)
         let data = try BackupService.exportData(from: container.mainContext, now: clock.now)
         try BackupService.importData(data, into: container.mainContext)
         let routine = try XCTUnwrap(game.routines().first { $0.programDay == 3 })
-        XCTAssertEqual(routine.programName, template.name)
-        XCTAssertEqual(routine.programChangeDate, template.changeDate)
+        XCTAssertEqual(routine.programName, ProgramFixture.name)
+        XCTAssertEqual(routine.programChangeDate, ProgramFixture.changeDate)
         XCTAssertEqual(routine.focus, "Full Body")
         XCTAssertEqual(routine.blocks.first?.circuit.resolvedFormat, .amrap)
     }
@@ -277,4 +285,72 @@ final class ProgramTests: XCTestCase {
     func testEmptyTextGivesNoDays() {
         XCTAssertTrue(RoutineTextParser.parseProgram("  \n \n").isEmpty)
     }
+}
+
+/// Programa real de ejemplo para las pruebas. La app no trae rutinas: las pasa el usuario.
+enum ProgramFixture {
+    private static func biSeries(_ first: CircuitExercise, _ second: CircuitExercise) -> RoutineBlock {
+        .circuit(CircuitPrescription(rounds: 3, exercises: [first, second], format: .biSeries))
+    }
+
+    private static func tabata(_ name: String, note: String? = nil) -> CircuitExercise {
+        CircuitExercise(exerciseName: name, seconds: 45, restSeconds: 60, note: note)
+    }
+
+    private static func reps(_ name: String, _ count: Int, note: String? = nil, rest: Int? = nil) -> CircuitExercise {
+        CircuitExercise(exerciseName: name, reps: count, restSeconds: rest, note: note)
+    }
+
+    static let name = "PED-FighterWOD"
+    static let changeDate = SistemaCalendar.date(year: 2026, month: 11, day: 9)
+    static let days: [ProgramDay] = [
+            ProgramDay(name: "Día 1 - Bi Series WOD", focus: "Full Body", blocks: [
+                biSeries(reps("Trap bar deadlift", 6), reps("Bent over row DB", 10)),
+                biSeries(reps("Smith machine squat", 8), reps("Push up", 10)),
+                biSeries(reps("2KB Front squat", 8), reps("Worms", 8)),
+                biSeries(reps("American Kettlebell Swing", 12),
+                         reps("Assisted dips machine", 6, note: "con peso corporal", rest: 60)),
+                .circuit(CircuitPrescription(rounds: 1, exercises: [reps("Alternate V - abs", 16)], title: "ABS")),
+            ]),
+            ProgramDay(name: "Día 2 - Circuito", focus: "Full Body", blocks: [
+                .circuit(CircuitPrescription(rounds: 4, exercises: [
+                    tabata("Goblet squat KB"),
+                    tabata("Climbers"),
+                    tabata("Bench press DB", note: "Ejecutar en el piso"),
+                    tabata("Cossack squat KB"),
+                    tabata("Junior bar pronated bent over row"),
+                    tabata("Battle Rope 1"),
+                    tabata("DB push press"),
+                    tabata("DB high plank rotation"),
+                    tabata("Wall sit up"),
+                ], format: .tabata)),
+            ]),
+            ProgramDay(name: "Día 3 - AMRAP WOD", focus: "Full Body", blocks: [
+                .circuit(CircuitPrescription(rounds: 1, exercises: [
+                    reps("Deadlift Romanian Barbell", 12),
+                    reps("Gorilla Row KB", 12, note: "c/l"),
+                    reps("KB Swing SA", 12, note: "c/l"),
+                    reps("Decline push ups on bench", 12),
+                    reps("Alt DB curl", 12, note: "c/l"),
+                ], format: .amrap, timeCapMinutes: 15)),
+                .circuit(CircuitPrescription(rounds: 1, exercises: [
+                    reps("Bent over row DB", 12),
+                    reps("Chest fly DB", 12, note: "Ejecutar en el piso"),
+                    reps("Static lunge DB", 12, note: "c/l"),
+                    reps("Skull crusher tricep bar", 12),
+                    reps("DB Thrusters", 12, rest: 60),
+                    reps("Bycicle abs", 12),
+                ], format: .amrap, title: "Bloque 2", timeCapMinutes: 15)),
+            ]),
+            ProgramDay(name: "Día 4 - Circuito Cardio", focus: "Full Body", blocks: [
+                .circuit(CircuitPrescription(rounds: 4, exercises: [
+                    CircuitExercise(exerciseName: "Air bike", seconds: 180, restSeconds: 120,
+                                    note: "8 min. Ejecutará 15 segundos de sprint y descansará activamente 45 segundos hasta completar el tiempo total de 3 minutos."),
+                    CircuitExercise(exerciseName: "Air row", seconds: 120, restSeconds: 60, note: "2 min / 20 kcal"),
+                    CircuitExercise(exerciseName: "Battle Rope 1", seconds: 135, restSeconds: 45, note: "3x45 s"),
+                    CircuitExercise(exerciseName: "Burpees", seconds: 45, restSeconds: 60),
+                    CircuitExercise(exerciseName: "Sprint SLED push", seconds: 120, restSeconds: 60, note: "2 min ON"),
+                ], format: .circuit)),
+            ]),
+    ]
 }

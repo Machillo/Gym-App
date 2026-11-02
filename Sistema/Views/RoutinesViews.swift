@@ -202,6 +202,11 @@ struct RoutineEditorView: View {
             Section {
                 Text("Duración estimada: ~\(Int(ComplianceEngine.estimatedMinutes(blocks))) min")
                     .foregroundStyle(Theme.secondaryText)
+                if blocks.contains(where: \.hasUnnamedExercise) {
+                    Text("Ponele nombre a todos los ejercicios para poder guardar.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.warning)
+                }
             }
         }
         .systemBackground()
@@ -213,7 +218,7 @@ struct RoutineEditorView: View {
                     game.saveRoutine(routine, name: name.trimmingCharacters(in: .whitespaces), blocks: blocks)
                     dismiss()
                 }
-                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || blocks.isEmpty)
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || blocks.isEmpty || blocks.contains(where: \.hasUnnamedExercise))
                 .accessibilityIdentifier("routine.save")
             }
         }
@@ -230,14 +235,11 @@ enum BlockTemplates {
     static func defaultBlock(_ kind: BlockKind) -> RoutineBlock {
         switch kind {
         case .strength:
-            return .strength(StrengthPrescription(exerciseName: "Sentadilla", sets: 3, reps: 5, weight: 40))
+            return .strength(StrengthPrescription(exerciseName: "", sets: 3, reps: 8, weight: 0))
         case .circuit:
-            return .circuit(CircuitPrescription(rounds: 3, exercises: [
-                CircuitExercise(exerciseName: "Burpees", reps: 10),
-                CircuitExercise(exerciseName: "Plancha", seconds: 30),
-            ], restBetweenRoundsSeconds: 60))
+            return .circuit(CircuitPrescription(rounds: 3, exercises: [CircuitExercise(exerciseName: "", reps: 10)]))
         case .cardio:
-            return .cardio(CardioPrescription(modality: .run, distanceKm: 5, minutes: 30))
+            return .cardio(CardioPrescription(modality: .run, distanceKm: nil, minutes: 30))
         case .classSession:
             return .klass(ClassPrescription(discipline: .muayThai, minutes: 60))
         }

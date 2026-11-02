@@ -127,7 +127,6 @@ struct SettingsView: View {
         .alert("Última confirmación", isPresented: Binding(get: { resetStep == 2 }, set: { if !$0 { resetStep = 0 } })) {
             Button("Borrar todo", role: .destructive) {
                 game.resetAll()
-                if !AppEnvironment.isTesting { game.seedProgramsIfNeeded() }
                 resetStep = 0
             }
             Button("Cancelar", role: .cancel) { resetStep = 0 }

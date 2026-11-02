@@ -96,7 +96,7 @@ struct SessionLogView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") { save() }
-                    .disabled(results.isEmpty)
+                    .disabled(results.isEmpty || results.contains(where: \.prescribed.hasUnnamedExercise))
                     .accessibilityIdentifier("log.save")
             }
         }
@@ -148,7 +148,7 @@ struct SessionLogView: View {
         var block = RoutineBlock(kind: kind)
         switch kind {
         case .strength: block.strength = StrengthPrescription(exerciseName: "", sets: 3, reps: 8, weight: 0)
-        case .circuit: block.circuit = CircuitPrescription(rounds: 3, exercises: [CircuitExercise(exerciseName: "Burpees", reps: 10)])
+        case .circuit: block.circuit = CircuitPrescription(rounds: 3, exercises: [CircuitExercise(exerciseName: "", reps: 10)])
         case .cardio: block.cardio = CardioPrescription(modality: .run, distanceKm: nil, minutes: 30)
         case .classSession: block.klass = ClassPrescription(discipline: .boxing, minutes: 60)
         }
@@ -242,7 +242,12 @@ struct BlockResultEditor: View {
             ForEach(Array(result.prescribed.circuit.exercises.enumerated()), id: \.element.id) { index, exercise in
                 if index < result.circuitActuals.count {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise.exerciseName).font(.subheadline.bold())
+                        if exercise.exerciseName.isEmpty || exercise.exerciseID == nil {
+                            TextField("Ejercicio", text: $result.prescribed.circuit.exercises[index].exerciseName)
+                                .font(.subheadline.bold())
+                        } else {
+                            Text(exercise.exerciseName).font(.subheadline.bold())
+                        }
                         Text(exercise.prescriptionText)
                             .font(.caption)
                             .foregroundStyle(Theme.secondaryText)
