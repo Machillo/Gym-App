@@ -1,0 +1,94 @@
+import SwiftData
+import SwiftUI
+
+struct RootView: View {
+    @Environment(GameService.self) private var game
+    @Query private var players: [Player]
+
+    var body: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            if players.isEmpty {
+                OnboardingView()
+            } else {
+                MainTabView()
+            }
+            SystemAnnouncementOverlay()
+        }
+        .task {
+            game.evaluate()
+            if !AppEnvironment.isUITesting { game.notifications.requestAuthorization() }
+        }
+    }
+}
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            NavigationStack { StatusView() }
+                .tabItem { Label("Estado", systemImage: "person.crop.square.filled.and.at.rectangle") }
+            NavigationStack { TrainingHubView() }
+                .tabItem { Label("Entrenar", systemImage: "dumbbell") }
+            NavigationStack { ProgressScreen() }
+                .tabItem { Label("Progreso", systemImage: "chart.xyaxis.line") }
+            NavigationStack { TrialsView() }
+                .tabItem { Label("Pruebas", systemImage: "shield.lefthalf.filled") }
+            NavigationStack { SettingsView() }
+                .tabItem { Label("Ajustes", systemImage: "gearshape") }
+        }
+    }
+}
+
+/// Mensajes animados del Sistema al subir/bajar de nivel, división o rango.
+struct SystemAnnouncementOverlay: View {
+    @Environment(GameService.self) private var game
+    @State private var appeared = false
+
+    var body: some View {
+        if let current = game.announcements.first {
+            let tint = current.positive ? Theme.glow : Theme.danger
+            ZStack {
+                Color.black.opacity(0.55).ignoresSafeArea()
+                VStack(spacing: 14) {
+                    Text("[ EL SISTEMA ]")
+                        .font(Theme.mono(12, weight: .bold))
+                        .tracking(4)
+                        .foregroundStyle(Theme.secondaryText)
+                    Text(current.headline)
+                        .font(Theme.mono(26, weight: .heavy))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(tint)
+                        .shadow(color: tint, radius: appeared ? 14 : 2)
+                    Text(current.message)
+                        .font(.body)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white)
+                    Text("Tocá para continuar")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                .systemPanel(tint: tint)
+                .padding(32)
+                .scaleEffect(appeared ? 1 : 0.85)
+                .opacity(appeared ? 1 : 0)
+            }
+            .id(current.id)
+            .contentShape(Rectangle())
+            .onTapGesture { dismiss() }
+            .onAppear {
+                appeared = false
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { appeared = true }
+            }
+            .task(id: current.id) {
+                try? await Task.sleep(nanoseconds: 3_500_000_000)
+                if game.announcements.first?.id == current.id { dismiss() }
+            }
+            .accessibilityIdentifier("announcement")
+        }
+    }
+
+    private func dismiss() {
+        withAnimation(.easeIn(duration: 0.2)) { appeared = false }
+        game.dismissAnnouncement()
+    }
+}
