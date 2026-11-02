@@ -1,6 +1,7 @@
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct TrainingHubView: View {
     @Environment(GameService.self) private var game
     @State private var logFree = false
@@ -105,6 +106,7 @@ struct RoutinesView: View {
     }
 }
 
+@MainActor
 struct RoutineEditorView: View {
     let routine: Routine?
 

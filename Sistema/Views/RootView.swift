@@ -1,6 +1,7 @@
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct RootView: View {
     @Environment(GameService.self) private var game
     @Query private var players: [Player]
@@ -17,7 +18,7 @@ struct RootView: View {
         }
         .task {
             game.evaluate()
-            if !AppEnvironment.isUITesting { game.notifications.requestAuthorization() }
+            if !AppEnvironment.isTesting { game.notifications.requestAuthorization() }
         }
     }
 }
@@ -40,6 +41,7 @@ struct MainTabView: View {
 }
 
 /// Mensajes animados del Sistema al subir/bajar de nivel, división o rango.
+@MainActor
 struct SystemAnnouncementOverlay: View {
     @Environment(GameService.self) private var game
     @State private var appeared = false

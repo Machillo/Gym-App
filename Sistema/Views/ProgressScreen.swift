@@ -2,6 +2,7 @@ import Charts
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct ProgressScreen: View {
     @Environment(GameService.self) private var game
     @Query(sort: \SystemLogEntry.date) private var logs: [SystemLogEntry]

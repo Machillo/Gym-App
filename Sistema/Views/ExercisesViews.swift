@@ -61,6 +61,7 @@ struct ExercisesView: View {
     }
 }
 
+@MainActor
 struct ExerciseEditorView: View {
     let exercise: Exercise?
 

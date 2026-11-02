@@ -1,6 +1,7 @@
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct TrialsView: View {
     @Environment(GameService.self) private var game
     @Query private var players: [Player]

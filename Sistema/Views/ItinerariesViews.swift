@@ -1,6 +1,7 @@
 import SwiftData
 import SwiftUI
 
+@MainActor
 struct ItinerariesView: View {
     @Environment(GameService.self) private var game
     @Query(sort: \Itinerary.startDate, order: .reverse) private var itineraries: [Itinerary]
@@ -73,6 +74,7 @@ struct ItineraryRow: View {
     }
 }
 
+@MainActor
 struct ItineraryEditorView: View {
     let itinerary: Itinerary?
 

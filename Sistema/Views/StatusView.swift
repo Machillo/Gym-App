@@ -16,6 +16,7 @@ enum SessionLogMode: Identifiable {
     }
 }
 
+@MainActor
 struct StatusView: View {
     @Environment(GameService.self) private var game
     @Query private var players: [Player]

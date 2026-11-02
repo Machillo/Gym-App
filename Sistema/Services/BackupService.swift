@@ -232,16 +232,20 @@ enum BackupService {
         try context.save()
     }
 
+    /// Borra fila por fila (no en lote) para que @Query refleje el cambio de inmediato.
     static func deleteAll(in context: ModelContext) {
-        try? context.delete(model: SystemLogEntry.self)
-        try? context.delete(model: AscensionTrial.self)
-        try? context.delete(model: PenaltyEvent.self)
-        try? context.delete(model: ExerciseLog.self)
-        try? context.delete(model: WorkoutSession.self)
-        try? context.delete(model: Exercise.self)
-        try? context.delete(model: Routine.self)
-        try? context.delete(model: Itinerary.self)
-        try? context.delete(model: Player.self)
+        func wipe<T: PersistentModel>(_ type: T.Type) {
+            for object in (try? context.fetch(FetchDescriptor<T>())) ?? [] { context.delete(object) }
+        }
+        wipe(SystemLogEntry.self)
+        wipe(AscensionTrial.self)
+        wipe(PenaltyEvent.self)
+        wipe(ExerciseLog.self)
+        wipe(WorkoutSession.self)
+        wipe(Exercise.self)
+        wipe(Routine.self)
+        wipe(Itinerary.self)
+        wipe(Player.self)
     }
 
     static func suggestedFileName(now: Date) -> String {

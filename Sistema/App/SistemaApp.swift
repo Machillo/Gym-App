@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 @main
+@MainActor
 struct SistemaApp: App {
     @State private var environment = AppEnvironment.make()
     @Environment(\.scenePhase) private var scenePhase
@@ -27,15 +28,18 @@ struct AppEnvironment {
     let game: GameService
 
     nonisolated static var isUITesting: Bool { ProcessInfo.processInfo.arguments.contains("-uitesting") }
+    /// Pruebas unitarias alojadas en la app: sin base real ni permisos.
+    nonisolated static var isUnitTesting: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
+    nonisolated static var isTesting: Bool { isUITesting || isUnitTesting }
 
     static func make() -> AppEnvironment {
         let container: ModelContainer
         do {
-            container = try SistemaSchema.makeContainer(inMemory: isUITesting)
+            container = try SistemaSchema.makeContainer(inMemory: isTesting)
         } catch {
             fatalError("No se pudo abrir la base de datos: \(error)")
         }
-        let notifications: NotificationScheduling = isUITesting ? SilentNotificationService() : LocalNotificationService()
+        let notifications: NotificationScheduling = isTesting ? SilentNotificationService() : LocalNotificationService()
         let game = GameService(context: container.mainContext, clock: SystemDateProvider(), notifications: notifications)
         return AppEnvironment(container: container, game: game)
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Primer arranque: nombre, primera rutina y primer itinerario.
+@MainActor
 struct OnboardingView: View {
     @Environment(GameService.self) private var game
 

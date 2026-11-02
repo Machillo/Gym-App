@@ -20,6 +20,7 @@ struct BackupFile: FileDocument {
     }
 }
 
+@MainActor
 struct SettingsView: View {
     @Environment(GameService.self) private var game
     @Query private var players: [Player]
@@ -177,6 +178,7 @@ struct SettingsView: View {
 
 #if DEBUG
 /// Interruptor de depuración (apagado por defecto) para cargar datos de ejemplo.
+@MainActor
 struct DebugSection: View {
     @Environment(GameService.self) private var game
     @AppStorage("debug.sampleDataEnabled") private var enabled = false

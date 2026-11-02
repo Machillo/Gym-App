@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// Registro de sesión: lo prescrito precargado y campos para lo real.
+@MainActor
 struct SessionLogView: View {
     let mode: SessionLogMode
 
@@ -191,16 +192,16 @@ struct BlockResultEditor: View {
             } else {
                 Text(result.prescribed.strength.exerciseName).font(.headline)
             }
-            ForEach(Array(result.sets.indices), id: \.self) { index in
+            ForEach($result.sets) { $set in
                 HStack {
-                    Text("Serie \(index + 1)").foregroundStyle(Theme.secondaryText)
+                    Text("Serie \((result.sets.firstIndex { $0.id == set.id } ?? 0) + 1)").foregroundStyle(Theme.secondaryText)
                     Spacer()
-                    TextField("Reps", value: $result.sets[index].reps, format: .number)
+                    TextField("Reps", value: $set.reps, format: .number)
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 50)
                     Text("×")
-                    TextField("kg", value: $result.sets[index].weight, format: .number)
+                    TextField("kg", value: $set.weight, format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 64)

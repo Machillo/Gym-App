@@ -154,11 +154,12 @@ struct RankPosition: Equatable, Codable {
         if count < 3 {
             division = nil
         } else {
-            // Reparte los niveles en tres tramos; el sobrante va a las divisiones bajas.
+            // Reparte los niveles en tres tramos; el sobrante va a las divisiones altas
+            // (C: III 25–30, II 31–37, I 38–44).
             let offset = clamped - range.lowerBound
             let base = count / 3
             let extra = count % 3
-            let firstSize = base + (extra > 0 ? 1 : 0)
+            let firstSize = base
             let secondSize = base + (extra > 1 ? 1 : 0)
             if offset < firstSize {
                 division = .iii
