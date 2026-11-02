@@ -71,37 +71,92 @@ struct SessionHistoryView: View {
     }
 }
 
+@MainActor
 struct RoutinesView: View {
+    @Environment(GameService.self) private var game
     @Query(sort: \Routine.name) private var routines: [Routine]
+    @State private var showImport = false
+    @State private var showNewRoutine = false
+
+    /// Programas del gimnasio, con sus días en orden.
+    private var programs: [(name: String, days: [Routine])] {
+        Dictionary(grouping: routines.filter { $0.programName != nil }, by: { $0.programName ?? "" })
+            .map { (name: $0.key, days: $0.value.sorted { ($0.programDay ?? 0) < ($1.programDay ?? 0) }) }
+            .sorted { $0.name < $1.name }
+    }
+
+    private var looseRoutines: [Routine] {
+        routines.filter { $0.programName == nil }
+    }
 
     var body: some View {
         List {
-            ForEach(routines) { routine in
-                NavigationLink {
-                    RoutineEditorView(routine: routine)
-                } label: {
-                    VStack(alignment: .leading) {
-                        Text(routine.name).font(.headline)
-                        Text("\(routine.blocks.count) bloques · ~\(Int(ComplianceEngine.estimatedMinutes(routine.blocks))) min")
-                            .font(.caption)
-                            .foregroundStyle(Theme.secondaryText)
+            ForEach(programs, id: \.name) { program in
+                Section {
+                    routineRows(program.days)
+                    NavigationLink {
+                        ItineraryEditorView(itinerary: nil, program: program.days)
+                    } label: {
+                        Label("Usar en un itinerario", systemImage: "calendar.badge.plus")
                     }
+                    .accessibilityIdentifier("routines.useProgram")
+                    .listRowBackground(Theme.panel)
+                } header: {
+                    programHeader(program.name, change: program.days.first?.programChangeDate)
                 }
-                .listRowBackground(Theme.panel)
+            }
+            if !looseRoutines.isEmpty {
+                Section(programs.isEmpty ? "" : "Rutinas sueltas") {
+                    routineRows(looseRoutines)
+                }
             }
         }
         .systemBackground()
         .navigationTitle("Rutinas")
         .toolbar {
-            NavigationLink {
-                RoutineEditorView(routine: nil)
+            Menu {
+                Button("Programa completo (pegar texto)") { showImport = true }
+                Button("Rutina individual") { showNewRoutine = true }
             } label: {
                 Image(systemName: "plus")
             }
             .accessibilityIdentifier("routines.add")
         }
+        .navigationDestination(isPresented: $showImport) { ProgramImportView() }
+        .navigationDestination(isPresented: $showNewRoutine) { RoutineEditorView(routine: nil) }
         .overlay {
             if routines.isEmpty { ContentUnavailableView("Sin rutinas", systemImage: "list.bullet") }
+        }
+    }
+
+    private func programHeader(_ name: String, change: Date?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(name).font(.headline).foregroundStyle(Theme.glow)
+            if let change {
+                Text("Cambio de rutina: \(change.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+            }
+        }
+    }
+
+    private func routineRows(_ items: [Routine]) -> some View {
+        ForEach(items) { routine in
+            NavigationLink {
+                RoutineEditorView(routine: routine)
+            } label: {
+                VStack(alignment: .leading) {
+                    Text(routine.name).font(.headline)
+                    Text("\(routine.focus.map { "\($0) · " } ?? "")\(Format.count(routine.blocks.count, "bloque")) · ~\(Int(ComplianceEngine.estimatedMinutes(routine.blocks))) min")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+            }
+            .deleteDisabled(game.isRoutineInUse(routine))
+            .listRowBackground(Theme.panel)
+        }
+        .onDelete { offsets in
+            for index in offsets { game.deleteRoutine(items[index]) }
         }
     }
 }
@@ -135,6 +190,9 @@ struct RoutineEditorView: View {
                 Menu {
                     ForEach(BlockKind.allCases) { kind in
                         Button(kind.name) { blocks.append(BlockTemplates.defaultBlock(kind)) }
+                    }
+                    ForEach([CircuitFormat.biSeries, .tabata, .amrap]) { format in
+                        Button(format.name) { blocks.append(BlockTemplates.defaultBlock(format: format)) }
                     }
                 } label: {
                     Label("Agregar bloque", systemImage: "plus")
@@ -184,11 +242,42 @@ enum BlockTemplates {
             return .klass(ClassPrescription(discipline: .muayThai, minutes: 60))
         }
     }
+
+    static func defaultBlock(format: CircuitFormat) -> RoutineBlock {
+        switch format {
+        case .circuit:
+            return defaultBlock(BlockKind.circuit)
+        case .biSeries:
+            return .circuit(CircuitPrescription(rounds: 3, exercises: [
+                CircuitExercise(exerciseName: "", reps: 10),
+                CircuitExercise(exerciseName: "", reps: 10),
+            ], format: .biSeries))
+        case .tabata:
+            return .circuit(CircuitPrescription(rounds: 4, exercises: [
+                CircuitExercise(exerciseName: "", seconds: 45, restSeconds: 60),
+            ], format: .tabata))
+        case .amrap:
+            return .circuit(CircuitPrescription(rounds: 1, exercises: [
+                CircuitExercise(exerciseName: "", reps: 12),
+            ], format: .amrap, timeCapMinutes: 15))
+        }
+    }
 }
 
 /// Editor de lo prescrito de un bloque.
 struct BlockEditorView: View {
     @Binding var block: RoutineBlock
+    @State private var quickList = ""
+
+    private var formatSelection: Binding<CircuitFormat> {
+        Binding(
+            get: { block.circuit.resolvedFormat },
+            set: { format in
+                block.circuit.format = format
+                if format == .amrap, block.circuit.timeCapMinutes == nil { block.circuit.timeCapMinutes = 15 }
+            }
+        )
+    }
 
     var body: some View {
         Form {
@@ -200,13 +289,21 @@ struct BlockEditorView: View {
                 Section("Prescripción") {
                     Stepper("Series: \(block.strength.sets)", value: $block.strength.sets, in: 1...20)
                     Stepper("Reps: \(block.strength.reps)", value: $block.strength.reps, in: 1...100)
-                    NumberField(label: "Peso (kg)", value: $block.strength.weight)
+                    WeightField(label: "Peso", kg: $block.strength.weight, unit: $block.strength.unit.orKg)
                 }
 
             case .circuit:
-                Section("Rondas") {
-                    Stepper("Rondas: \(block.circuit.rounds)", value: $block.circuit.rounds, in: 1...50)
-                    IntField(label: "Descanso entre rondas (s)", value: $block.circuit.restBetweenRoundsSeconds.orZero)
+                Section("Formato") {
+                    Picker("Formato", selection: formatSelection) {
+                        ForEach(CircuitFormat.allCases) { Text($0.name).tag($0) }
+                    }
+                    TextField("Título opcional (ej. ABS)", text: $block.circuit.title.orEmpty)
+                    if block.circuit.isAMRAP {
+                        NumberField(label: "Tiempo (min)", value: $block.circuit.timeCapMinutes.orZero)
+                    } else {
+                        Stepper("Rondas: \(block.circuit.rounds)", value: $block.circuit.rounds, in: 1...50)
+                        IntField(label: "Descanso entre rondas (s)", value: $block.circuit.restBetweenRoundsSeconds.orZero)
+                    }
                 }
                 ForEach($block.circuit.exercises) { $exercise in
                     Section {
@@ -234,8 +331,9 @@ struct BlockEditorView: View {
                         } else {
                             IntField(label: "Reps", value: $exercise.reps.orZero)
                         }
-                        NumberField(label: "Peso opcional (kg)", value: $exercise.weight.orZero)
+                        WeightField(label: "Peso opcional", kg: $exercise.weight.orZero, unit: $exercise.unit.orKg)
                         IntField(label: "Descanso opcional (s)", value: $exercise.restSeconds.orZero)
+                        TextField("Nota opcional (ej. c/l)", text: $exercise.note.orEmpty)
                         Button("Quitar ejercicio", role: .destructive) {
                             block.circuit.exercises.removeAll { $0.id == exercise.id }
                         }
@@ -245,6 +343,19 @@ struct BlockEditorView: View {
                     Button("Agregar ejercicio") {
                         block.circuit.exercises.append(CircuitExercise(exerciseName: "", reps: 10))
                     }
+                }
+                Section {
+                    TextEditor(text: $quickList)
+                        .frame(minHeight: 100)
+                    Button("Agregar lista") {
+                        block.circuit.exercises += RoutineTextParser.exercises(from: quickList)
+                        quickList = ""
+                    }
+                    .disabled(quickList.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } header: {
+                    Text("Agregar varios de una vez")
+                } footer: {
+                    Text("Un ejercicio por línea, por ejemplo: Burpees 45 sec 1 min, o Goblet squat 12 reps c/l.")
                 }
 
             case .cardio:

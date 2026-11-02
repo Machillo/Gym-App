@@ -46,18 +46,22 @@ struct SessionLogView: View {
                 Section {
                     BlockResultEditor(result: $result)
                 } header: {
-                    Label(result.prescribed.kind.name, systemImage: result.prescribed.kind.symbol)
+                    Label(result.prescribed.displayName, systemImage: result.prescribed.kind.symbol)
                 } footer: {
                     Text("Prescrito: \(result.prescribed.summary) · Cumplimiento: \(Format.percent(ComplianceEngine.blockCompliance(result)))")
                 }
             }
             .onDelete { results.remove(atOffsets: $0) }
 
-            Section("Esfuerzo") {
+            Section {
                 Stepper("RPE: \(rpe)", value: $rpe, in: 1...10)
                     .accessibilityIdentifier("log.rpe")
                 NumberField(label: "Duración (min)", value: $duration, identifier: "log.duration")
                 TextField("Notas", text: $notes, axis: .vertical)
+            } header: {
+                Text("Esfuerzo")
+            } footer: {
+                Text("La duración viene estimada y el XP depende de ella: poné lo que realmente duraste.")
             }
 
             Section("Vista previa del Sistema") {
@@ -201,18 +205,19 @@ struct BlockResultEditor: View {
                         .multilineTextAlignment(.trailing)
                         .frame(width: 50)
                     Text("×")
-                    TextField("kg", value: $set.weight, format: .number)
+                    TextField("0", value: $set.weight.inUnit(set.unit ?? .kg), format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 64)
-                    Text("kg").foregroundStyle(Theme.secondaryText)
+                    WeightUnitToggle(unit: $set.unit.orKg)
                 }
             }
             HStack {
                 Button("+ Serie") {
                     let last = result.sets.last
                     result.sets.append(PerformedSet(reps: last?.reps ?? result.prescribed.strength.reps,
-                                                    weight: last?.weight ?? result.prescribed.strength.weight))
+                                                    weight: last?.weight ?? result.prescribed.strength.weight,
+                                                    unit: last?.unit ?? result.prescribed.strength.unit))
                 }
                 .buttonStyle(.borderless)
                 Spacer()
@@ -227,19 +232,27 @@ struct BlockResultEditor: View {
             }
 
         case .circuit:
-            Stepper("Rondas: \(result.rounds) / \(result.prescribed.circuit.rounds)", value: $result.rounds, in: 0...99)
+            if result.prescribed.circuit.isAMRAP {
+                NumberField(label: "Tiempo (presc. \(Format.minutes(result.prescribed.circuit.timeCapMinutes ?? 0)))",
+                            value: $result.minutes.orZero, identifier: "log.amrapMinutes")
+                Stepper("Rondas completadas: \(result.rounds)", value: $result.rounds, in: 0...99)
+            } else {
+                Stepper("Rondas: \(result.rounds) / \(result.prescribed.circuit.rounds)", value: $result.rounds, in: 0...99)
+            }
             ForEach(Array(result.prescribed.circuit.exercises.enumerated()), id: \.element.id) { index, exercise in
                 if index < result.circuitActuals.count {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(exercise.exerciseName).font(.subheadline.bold())
+                        Text(exercise.prescriptionText)
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
                         if exercise.seconds != nil {
                             IntField(label: "Segundos (presc. \(exercise.seconds ?? 0))", value: $result.circuitActuals[index].seconds.orZero)
                         } else {
                             IntField(label: "Reps (presc. \(exercise.reps ?? 0))", value: $result.circuitActuals[index].reps.orZero)
                         }
-                        if exercise.weight != nil {
-                            NumberField(label: "Peso (kg)", value: $result.circuitActuals[index].weight.orZero)
-                        }
+                        WeightField(label: "Peso", kg: $result.circuitActuals[index].weight.orZero,
+                                    unit: $result.circuitActuals[index].unit.orKg)
                     }
                 }
             }

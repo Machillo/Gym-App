@@ -77,6 +77,8 @@ struct ItineraryRow: View {
 @MainActor
 struct ItineraryEditorView: View {
     let itinerary: Itinerary?
+    /// Días de un programa para precargar el plan semanal de un itinerario nuevo.
+    var program: [Routine] = []
 
     @Environment(GameService.self) private var game
     @Environment(\.dismiss) private var dismiss
@@ -143,6 +145,12 @@ struct ItineraryEditorView: View {
                 start = now
                 end = SistemaCalendar.addDays(56, to: now)
                 if let previous = game.itineraries().first { plan = previous.plan }
+                if let first = program.first {
+                    name = first.programName ?? name
+                    if let change = first.programChangeDate, change > now { end = change }
+                    let weekdays = ProgramSchedule.defaultWeekdays(dayCount: program.count)
+                    plan = ProgramSchedule.plan(routineIDs: program.map(\.id), on: Set(weekdays))
+                }
             }
         }
     }

@@ -189,11 +189,11 @@ struct ExerciseDetailView: View {
     var body: some View {
         List {
             Section("Marcas personales") {
-                record("Mejor peso", logs.map(\.weight).max().map(Format.weight))
-                record("Mejor e1RM (Epley)", logs.map(\.e1RM).max().map(Format.weight))
+                record("Mejor peso", logs.map(\.weight).max().map(Format.weightBoth))
+                record("Mejor e1RM (Epley)", logs.map(\.e1RM).max().map(Format.weightBoth))
                 record("Reps máximas", logs.map(\.reps).max().map { "\($0)" })
                 record("Mejor volumen en una sesión",
-                       Dictionary(grouping: logs, by: \.sessionID).values.map { group in group.reduce(0.0) { $0 + $1.volume } }.max().map(Format.weight))
+                       Dictionary(grouping: logs, by: \.sessionID).values.map { group in group.reduce(0.0) { $0 + $1.volume } }.max().map(Format.weightBoth))
                 record("Mejor tiempo (circuito)", logs.map(\.seconds).filter { $0 > 0 }.max().map { "\(Int($0)) s" })
                 record("Mejoras sobre lo prescrito", "\(logs.filter(\.isImprovement).count)")
             }
@@ -214,6 +214,9 @@ struct ExerciseDetailView: View {
                             .foregroundStyle(Theme.accent)
                     }
                     .frame(height: 220)
+                    Text("Peso, e1RM y volumen en kg.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
                 }
             }
             .listRowBackground(Theme.panel)

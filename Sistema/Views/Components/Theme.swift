@@ -111,6 +111,69 @@ extension Binding where Value == Int? {
     }
 }
 
+extension Binding where Value == WeightUnit? {
+    /// Sin unidad guardada, el peso está en kg.
+    var orKg: Binding<WeightUnit> {
+        Binding<WeightUnit>(
+            get: { wrappedValue ?? .kg },
+            set: { wrappedValue = $0 }
+        )
+    }
+}
+
+extension Binding where Value == String? {
+    var orEmpty: Binding<String> {
+        Binding<String>(
+            get: { wrappedValue ?? "" },
+            set: { wrappedValue = $0.isEmpty ? nil : $0 }
+        )
+    }
+}
+
+extension Binding where Value == Double {
+    /// Muestra y recibe en la unidad indicada un peso guardado en kg.
+    /// Sin peso el campo queda vacío: con un 0 visible, escribir 25 terminaba en 250.
+    func inUnit(_ unit: WeightUnit) -> Binding<Double?> {
+        Binding<Double?>(
+            get: { wrappedValue == 0 ? nil : (unit.fromKg(wrappedValue) * 100).rounded() / 100 },
+            set: { wrappedValue = unit.toKg($0 ?? 0) }
+        )
+    }
+}
+
+/// Alterna entre kg y lb. El peso real no cambia: solo cómo se ve y se escribe.
+struct WeightUnitToggle: View {
+    @Binding var unit: WeightUnit
+
+    var body: some View {
+        Button(unit.symbol) { unit = unit.other }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityLabel("Unidad: \(unit.symbol). Cambiar a \(unit.other.symbol)")
+    }
+}
+
+/// Campo de peso con selector de unidad.
+struct WeightField: View {
+    var label: String
+    @Binding var kg: Double
+    @Binding var unit: WeightUnit
+    var identifier: String?
+
+    var body: some View {
+        HStack {
+            Text(label).foregroundStyle(Theme.secondaryText)
+            Spacer()
+            TextField("0", value: $kg.inUnit(unit), format: .number)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 80)
+                .accessibilityIdentifier(identifier ?? label)
+            WeightUnitToggle(unit: $unit)
+        }
+    }
+}
+
 /// Campo numérico compacto con etiqueta.
 struct NumberField: View {
     var label: String

@@ -1,11 +1,14 @@
+import SwiftData
 import SwiftUI
 
 /// Primer arranque: nombre, primera rutina y primer itinerario.
 @MainActor
 struct OnboardingView: View {
     @Environment(GameService.self) private var game
+    @Query(sort: \Routine.name) private var routines: [Routine]
 
     @State private var step = 0
+    @State private var usingProgram = false
     @State private var name = ""
     @State private var routineName = "Rutina A"
     @State private var blocks: [RoutineBlock] = []
@@ -14,6 +17,17 @@ struct OnboardingView: View {
     @State private var trainingDays: Set<Weekday> = AppEnvironment.isUITesting
         ? Set(Weekday.allCases)
         : [.monday, .tuesday, .wednesday, .thursday, .friday]
+
+    /// Días del programa del gimnasio ya cargado, si hay uno.
+    private var programDays: [Routine] {
+        routines.filter { $0.programName != nil }.sorted { ($0.programDay ?? 0) < ($1.programDay ?? 0) }
+    }
+
+    /// Fecha de cambio del programa, si todavía no ha pasado.
+    private var programEnd: Date? {
+        guard usingProgram, let change = programDays.first?.programChangeDate, change > game.now else { return nil }
+        return change
+    }
 
     var body: some View {
         NavigationStack {
@@ -60,6 +74,20 @@ struct OnboardingView: View {
 
     private var routineStep: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let program = programDays.first?.programName {
+                Button {
+                    usingProgram = true
+                    itineraryName = program
+                    trainingDays = Set(ProgramSchedule.defaultWeekdays(dayCount: programDays.count))
+                    step = 2
+                } label: {
+                    Label("Usar \(program) (\(programDays.count) días)", systemImage: "list.bullet.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("onboarding.useProgram")
+                Text("O creá otra rutina:").font(.caption).foregroundStyle(Theme.secondaryText)
+            }
             Text("Primera rutina").font(.title2.bold())
             Text("Agregá bloques. Después podés editarlos con detalle en Entrenar > Rutinas.")
                 .foregroundStyle(Theme.secondaryText)
@@ -111,7 +139,12 @@ struct OnboardingView: View {
                 .foregroundStyle(Theme.secondaryText)
             TextField("Nombre del itinerario", text: $itineraryName)
                 .textFieldStyle(.roundedBorder)
-            Stepper("Duración: \(weeks) semanas", value: $weeks, in: 1...26)
+            if let programEnd {
+                Text("Hasta el cambio de rutina: \(programEnd.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.subheadline)
+            } else {
+                Stepper("Duración: \(weeks) semanas", value: $weeks, in: 1...26)
+            }
             HStack(spacing: 6) {
                 ForEach(Weekday.allCases) { day in
                     let on = trainingDays.contains(day)
@@ -128,11 +161,21 @@ struct OnboardingView: View {
                     .accessibilityIdentifier("onboarding.day.\(day.rawValue)")
                 }
             }
+            if usingProgram {
+                let plan = ProgramSchedule.plan(routineIDs: programDays.map(\.id), on: trainingDays)
+                ForEach(plan.filter { !$0.isRest }) { day in
+                    Text("\(day.weekday.shortName): \(programDays.first { $0.id == day.routineID }?.name ?? "—")")
+                        .font(.caption)
+                }
+            }
             Text("Empieza hoy. El día de hoy no se penaliza.")
                 .font(.caption)
                 .foregroundStyle(Theme.secondaryText)
             HStack {
-                Button("Atrás") { step = 1 }
+                Button("Atrás") {
+                    usingProgram = false
+                    step = 1
+                }
                 Spacer()
                 Button("Comenzar") { finish() }
                     .buttonStyle(.borderedProminent)
@@ -145,10 +188,13 @@ struct OnboardingView: View {
 
     private func finish() {
         game.createPlayer(name: name)
-        let routine = game.saveRoutine(nil, name: routineName.trimmingCharacters(in: .whitespaces), blocks: blocks)
-        let plan = Weekday.allCases.map { DayPlan(weekday: $0, routineID: trainingDays.contains($0) ? routine.id : nil) }
+        let routineIDs = usingProgram
+            ? programDays.map(\.id)
+            : [game.saveRoutine(nil, name: routineName.trimmingCharacters(in: .whitespaces), blocks: blocks).id]
+        let plan = ProgramSchedule.plan(routineIDs: routineIDs, on: trainingDays)
         let start = game.now
-        game.createItinerary(name: itineraryName, start: start, end: SistemaCalendar.addDays(weeks * 7 - 1, to: start), plan: plan)
+        let end = programEnd ?? SistemaCalendar.addDays(weeks * 7 - 1, to: start)
+        game.createItinerary(name: itineraryName, start: start, end: end, plan: plan)
         game.evaluate()
     }
 }
