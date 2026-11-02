@@ -12,6 +12,10 @@ enum ComplianceEngine {
             return clamp(done / prescribed)
 
         case .circuit:
+            if p.circuit.isAMRAP {
+                guard let cap = p.circuit.timeCapMinutes, cap > 0 else { return result.rounds > 0 ? 1 : 0 }
+                return clamp((result.minutes ?? 0) / cap)
+            }
             let rounds = p.circuit.rounds
             guard rounds > 0 else { return 0 }
             let roundRatio = clamp(Double(result.rounds) / Double(rounds))
@@ -58,6 +62,7 @@ enum ComplianceEngine {
         case .strength:
             return Double(max(block.strength.sets, 0)) * 2.5
         case .circuit:
+            if block.circuit.isAMRAP { return block.circuit.timeCapMinutes ?? 0 }
             let perRoundSeconds = block.circuit.exercises.reduce(0.0) { acc, e in
                 let work = Double(e.seconds ?? ((e.reps ?? 0) * 3))
                 return acc + work + Double(e.restSeconds ?? 0)

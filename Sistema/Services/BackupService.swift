@@ -31,6 +31,7 @@ struct BackupDocument: Codable, Equatable {
 
     struct RoutineDTO: Codable, Equatable {
         var id: UUID, name: String, createdAt: Date, blocks: [RoutineBlock]
+        var programName: String?, programDay: Int?, focus: String?, programChangeDate: Date?
     }
 
     struct ExerciseDTO: Codable, Equatable {
@@ -87,7 +88,9 @@ enum BackupService {
                            createdAt: i.createdAt, plan: i.plan)
         }
         let routines: [D.RoutineDTO] = try context.fetch(FetchDescriptor<Routine>()).map { r in
-            D.RoutineDTO(id: r.id, name: r.name, createdAt: r.createdAt, blocks: r.blocks)
+            D.RoutineDTO(id: r.id, name: r.name, createdAt: r.createdAt, blocks: r.blocks,
+                         programName: r.programName, programDay: r.programDay, focus: r.focus,
+                         programChangeDate: r.programChangeDate)
         }
         let exercises: [D.ExerciseDTO] = try context.fetch(FetchDescriptor<Exercise>()).map { e in
             D.ExerciseDTO(id: e.id, name: e.name, aliases: e.aliases, categoryRaw: e.categoryRaw, statsRaw: e.statsRaw,
@@ -180,6 +183,10 @@ enum BackupService {
         }
         for r in doc.routines {
             let routine = Routine(name: r.name, blocks: r.blocks, now: r.createdAt)
+            routine.programName = r.programName
+            routine.programDay = r.programDay
+            routine.focus = r.focus
+            routine.programChangeDate = r.programChangeDate
             routine.id = r.id
             context.insert(routine)
         }

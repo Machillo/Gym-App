@@ -175,6 +175,11 @@ final class Routine {
     var name: String
     var createdAt: Date
     var blocksData: Data
+    /// Programa del gimnasio al que pertenece este día, si aplica.
+    var programName: String?
+    var programDay: Int?
+    var focus: String?
+    var programChangeDate: Date?
 
     init(name: String, blocks: [RoutineBlock], now: Date = Date()) {
         id = UUID()

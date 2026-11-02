@@ -194,6 +194,43 @@ final class GameService {
         return target
     }
 
+    /// Crea una rutina por cada día de un programa del gimnasio.
+    @discardableResult
+    func saveProgram(name: String, changeDate: Date?, days: [ProgramDay]) -> [Routine] {
+        let saved = days.enumerated().map { index, day -> Routine in
+            let routine = Routine(name: day.name, blocks: linkExercises(day.blocks), now: now)
+            routine.programName = name
+            routine.programDay = index + 1
+            routine.focus = day.focus
+            routine.programChangeDate = changeDate
+            context.insert(routine)
+            return routine
+        }
+        save()
+        return saved
+    }
+
+    /// Carga una sola vez el programa actual del gimnasio. Si lo borrás, no vuelve a aparecer.
+    func seedProgramsIfNeeded(defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: ProgramTemplates.seedKey) else { return }
+        defaults.set(true, forKey: ProgramTemplates.seedKey)
+        let template = ProgramTemplates.pedFighterWOD
+        guard !routines().contains(where: { $0.programName == template.name }) else { return }
+        seedCatalogIfNeeded()
+        saveProgram(name: template.name, changeDate: template.changeDate, days: template.days)
+    }
+
+    func isRoutineInUse(_ routine: Routine) -> Bool {
+        activeItinerary()?.plan.contains { $0.routineID == routine.id } ?? false
+    }
+
+    /// Las sesiones guardan su propia copia de lo prescrito: borrar la rutina no toca el historial.
+    func deleteRoutine(_ routine: Routine) {
+        guard !isRoutineInUse(routine) else { return }
+        context.delete(routine)
+        save()
+    }
+
     @discardableResult
     func createItinerary(name: String, start: Date, end: Date, plan: [DayPlan]) -> Itinerary {
         for it in itineraries() { it.isActive = false }
@@ -329,7 +366,7 @@ final class GameService {
             case .circuit:
                 for (index, exercise) in block.circuit.exercises.enumerated() {
                     let actual = index < result.circuitActuals.count ? result.circuitActuals[index] : PerformedCircuitExercise()
-                    guard result.rounds > 0 else { continue }
+                    guard result.rounds > 0 || (block.circuit.isAMRAP && (result.minutes ?? 0) > 0) else { continue }
                     context.insert(ExerciseLog(exerciseID: exercise.exerciseID,
                                                markKey: markKey(id: exercise.exerciseID, name: exercise.exerciseName),
                                                sessionID: session.id, date: session.date, kind: .circuit,
@@ -447,8 +484,9 @@ final class GameService {
         rescheduleNotifications()
     }
 
-    func resetAll() {
+    func resetAll(defaults: UserDefaults = .standard) {
         BackupService.deleteAll(in: context)
+        defaults.removeObject(forKey: ProgramTemplates.seedKey)
         announcements.removeAll()
         save()
         notifications.replaceAll(with: [])
