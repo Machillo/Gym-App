@@ -59,6 +59,9 @@ final class GameService {
 
     var now: Date { clock.now }
 
+    /// Hasta cuántos días atrás se puede registrar una sesión planeada que quedó pendiente.
+    private static let pendingLookbackDays = 7
+
     // MARK: - Lecturas
 
     func player() -> Player? {
@@ -104,6 +107,20 @@ final class GameService {
               let plan = itinerary.dayPlan(for: today), !plan.isRest else { return nil }
         let done = sessions().last { !$0.isPunishment && $0.plannedDay == today }
         return TodayMission(itinerary: itinerary, routine: routine(id: plan.routineID), day: today, completedSession: done)
+    }
+
+    /// Días planeados recientes del itinerario activo que todavía no tienen sesión, del más viejo al más nuevo.
+    func pendingMissions() -> [TodayMission] {
+        guard let itinerary = activeItinerary(), let player = player() else { return [] }
+        let today = SistemaCalendar.startOfDay(now)
+        let logged = Set(sessions().filter { !$0.isPunishment }.compactMap(\.plannedDay).map(SistemaCalendar.startOfDay))
+        return (1...Self.pendingLookbackDays).reversed().compactMap { offset in
+            let day = SistemaCalendar.addDays(-offset, to: today)
+            guard itinerary.snapshot.covers(day), !logged.contains(day),
+                  !player.injuries.contains(where: { $0.contains(day) }),
+                  let plan = itinerary.dayPlan(for: day), !plan.isRest else { return nil }
+            return TodayMission(itinerary: itinerary, routine: routine(id: plan.routineID), day: day, completedSession: nil)
+        }
     }
 
     /// El itinerario activo venció (o no hay ninguno vigente) y el Sistema exige uno nuevo.
@@ -238,6 +255,24 @@ final class GameService {
         itinerary.plan = plan
         save()
         rescheduleNotifications()
+    }
+
+    /// Pone un programa en lugar del itinerario activo, desde la misma fecha de inicio y hasta su fecha de cambio.
+    /// Borra las rutinas del itinerario reemplazado; el historial no se toca porque cada sesión guarda su copia.
+    func adoptProgram(named name: String) {
+        let days = routines().filter { $0.programName == name }.sorted { ($0.programDay ?? 0) < ($1.programDay ?? 0) }
+        let current = activeItinerary()
+        guard !days.isEmpty, current?.name != name else { return }
+        let start = current?.startDate ?? SistemaCalendar.startOfDay(now)
+        let end = days.first?.programChangeDate ?? SistemaCalendar.addDays(56, to: start)
+        let replaced = routines().filter { routine in
+            routine.programName != name && current?.plan.contains { $0.routineID == routine.id } == true
+        }
+        if let current, !sessions().contains(where: { $0.itineraryID == current.id }) { context.delete(current) }
+        let weekdays = ProgramSchedule.defaultWeekdays(dayCount: days.count)
+        createItinerary(name: name, start: start, end: end,
+                        plan: ProgramSchedule.plan(routineIDs: days.map(\.id), on: Set(weekdays)))
+        replaced.forEach(deleteRoutine)
     }
 
     // MARK: - Evaluación diaria (penalizaciones)

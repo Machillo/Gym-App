@@ -23,7 +23,11 @@ struct SessionLogView: View {
         Form {
             Section("Sesión") {
                 TextField("Título", text: $title)
-                DatePicker("Fecha y hora", selection: $date)
+                if let day = lateDay {
+                    DatePicker("Fecha y hora", selection: $date, in: day...SistemaCalendar.addDays(1, to: day).addingTimeInterval(-1))
+                } else {
+                    DatePicker("Fecha y hora", selection: $date)
+                }
                 if case .free = mode {
                     Picker("Basar en rutina", selection: $routineID) {
                         Text("Ninguna").tag(UUID?.none)
@@ -76,7 +80,7 @@ struct SessionLogView: View {
                     Spacer()
                     Text("\(Int(previewXP(compliance: compliance).rounded()))")
                 }
-                if compliance < 0.5 && isPlanned {
+                if compliance < 0.5 && isPlanned && lateDay == nil {
                     Text("Menos de 50 %: al cerrar el día cuenta como media falta.")
                         .font(.caption)
                         .foregroundStyle(Theme.danger)
@@ -108,9 +112,15 @@ struct SessionLogView: View {
         return false
     }
 
+    /// El día planeado cuando se registra después de que pasó.
+    private var lateDay: Date? {
+        guard case let .planned(_, _, day) = mode, day < SistemaCalendar.startOfDay(game.now) else { return nil }
+        return day
+    }
+
     private var navigationTitle: String {
         switch mode {
-        case .planned: return "Misión de hoy"
+        case .planned: return lateDay == nil ? "Misión de hoy" : "Día pendiente"
         case .free: return "Sesión libre"
         case .punishment: return PunishmentMission.title
         }
@@ -119,7 +129,7 @@ struct SessionLogView: View {
     private func setup() {
         guard !loaded else { return }
         loaded = true
-        date = game.now
+        date = lateDay.map { $0.addingTimeInterval(12 * 3600) } ?? game.now
         switch mode {
         case let .planned(id, _, _):
             if let routine = game.routine(id: id) { load(routine) }

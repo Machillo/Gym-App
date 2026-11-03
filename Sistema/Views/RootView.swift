@@ -19,6 +19,7 @@ struct RootView: View {
         .task {
             #if DEBUG
             if let xp = AppEnvironment.priorHistoryXPArgument { game.applyPriorHistory(xp: xp) }
+            if let program = AppEnvironment.adoptProgramArgument { game.adoptProgram(named: program) }
             #endif
             game.evaluate()
             if !AppEnvironment.isTesting { game.notifications.requestAuthorization() }

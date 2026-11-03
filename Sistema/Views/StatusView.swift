@@ -175,6 +175,28 @@ struct StatusView: View {
             } else {
                 Text("No hay itinerario activo.").foregroundStyle(Theme.secondaryText)
             }
+            let pending = game.pendingMissions()
+            if !pending.isEmpty {
+                Divider()
+                Text("Días pendientes").font(.subheadline.bold())
+                ForEach(pending, id: \.day) { item in
+                    Button {
+                        logMode = .planned(routineID: item.routine?.id, itineraryID: item.itinerary.id, day: item.day)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.day.formatted(.dateTime.weekday(.wide).day().month().locale(Locale(identifier: "es_CR"))))
+                                .font(.subheadline.bold())
+                            Text(item.routine?.name ?? "Rutina no encontrada").font(.caption)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("status.logPending")
+                }
+                Text("Registrarlo tarde suma XP y queda en tu historial, pero no borra una falta ya cobrada.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+            }
             Button {
                 logMode = .free
             } label: {

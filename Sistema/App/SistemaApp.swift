@@ -40,6 +40,13 @@ struct AppEnvironment {
         guard let index = arguments.firstIndex(of: "-priorHistoryXP"), index + 1 < arguments.count else { return nil }
         return Int(arguments[index + 1])
     }
+
+    /// Programa de `-adoptProgram <nombre>`, para reemplazar el itinerario activo desde el lanzamiento.
+    nonisolated static var adoptProgramArgument: String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-adoptProgram"), index + 1 < arguments.count else { return nil }
+        return arguments[index + 1]
+    }
     #endif
 
     static func make() -> AppEnvironment {
