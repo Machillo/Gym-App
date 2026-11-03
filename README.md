@@ -111,6 +111,14 @@ Se evalúan al abrir la app y al volver a primer plano, día cerrado por día ce
 
 Si el XP cae por debajo del piso del rango, perdés el rango y tenés que volver a pasar la prueba (sin repetir el tiempo mínimo). Piso absoluto: Rango E, nivel 1. Las sesiones libres dan XP pero no borran faltas.
 
+### Días pendientes
+
+Los días planeados de los últimos 7 días que no tienen sesión aparecen en Estado y se pueden registrar tarde: suman XP, atributos e historial. No borran una falta ya cobrada ni suman racha, porque ese día ya se evaluó.
+
+### Cambiar de programa
+
+En un build de desarrollo, lanzar con `-adoptProgram <nombre>` pone ese programa en lugar del itinerario activo, desde su misma fecha de inicio y hasta la fecha de cambio del programa, y borra las rutinas del itinerario reemplazado. Lanzarlo de nuevo no cambia nada.
+
 ### Historial previo
 
 El entrenamiento anterior a la app se reconoce una sola vez, como XP, sin botón en la app: en un build de desarrollo se lanza con `-priorHistoryXP <xp>`. Da por superadas las pruebas de los rangos alcanzados, pero el tiempo mínimo y los requisitos de la siguiente prueba cuentan desde ese día. No es una sesión: no toca racha ni atributos.
