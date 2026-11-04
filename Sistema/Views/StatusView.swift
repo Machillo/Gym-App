@@ -6,12 +6,16 @@ enum SessionLogMode: Identifiable {
     case planned(routineID: UUID?, itineraryID: UUID, day: Date)
     case free
     case punishment
+    case edit(WorkoutSession)
+    case classLog
 
     var id: String {
         switch self {
         case .planned: return "planned"
         case .free: return "free"
         case .punishment: return "punishment"
+        case let .edit(session): return "edit-\(session.id)"
+        case .classLog: return "classLog"
         }
     }
 }
@@ -69,6 +73,13 @@ struct StatusView: View {
                     Label(status.label, systemImage: statusSymbol(status))
                         .font(.caption.bold())
                         .foregroundStyle(statusColor(status))
+                    NavigationLink {
+                        ProfileView()
+                    } label: {
+                        Label(player.profileTitle ?? "Ver mi perfil", systemImage: "person.text.rectangle")
+                            .font(.caption.bold())
+                    }
+                    .accessibilityIdentifier("status.profile")
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
@@ -127,6 +138,14 @@ struct StatusView: View {
                 Text("Hasta: \(injury.end.formatted(date: .abbreviated, time: .omitted)). Penalizaciones y racha congeladas.")
                     .font(.caption)
                     .foregroundStyle(Theme.secondaryText)
+            }
+            .systemPanel(tint: Theme.warning)
+        }
+        if let expiry = game.appExpiry, expiry > game.now, expiry.timeIntervalSince(game.now) < 3 * 86_400 {
+            VStack(alignment: .leading, spacing: 6) {
+                PanelHeader(title: "La app está por vencer", symbol: "clock.badge.exclamationmark")
+                Text("Vence el \(expiry.formatted(date: .abbreviated, time: .shortened)). Conectá el iPhone a la Mac para reinstalar; tus datos no se pierden.")
+                    .font(.subheadline)
             }
             .systemPanel(tint: Theme.warning)
         }
@@ -197,6 +216,13 @@ struct StatusView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.secondaryText)
             }
+            Button {
+                logMode = .classLog
+            } label: {
+                Label("Registrar clase", systemImage: "figure.boxing").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("status.logClass")
             Button {
                 logMode = .free
             } label: {

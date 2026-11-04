@@ -16,7 +16,9 @@ struct SistemaApp: App {
                 .tint(Theme.accent)
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { environment.game.evaluate() }
+            guard phase == .active else { return }
+            environment.game.evaluate()
+            if !AppEnvironment.isTesting { environment.game.runAutoBackupIfDue() }
         }
     }
 }

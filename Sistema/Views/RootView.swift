@@ -22,7 +22,10 @@ struct RootView: View {
             if let program = AppEnvironment.adoptProgramArgument { game.adoptProgram(named: program) }
             #endif
             game.evaluate()
-            if !AppEnvironment.isTesting { game.notifications.requestAuthorization() }
+            if !AppEnvironment.isTesting {
+                game.notifications.requestAuthorization()
+                game.runAutoBackupIfDue()
+            }
         }
     }
 }

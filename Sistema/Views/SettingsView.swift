@@ -70,7 +70,10 @@ struct SettingsView: View {
                 } label: {
                     Label("Importar respaldo JSON", systemImage: "square.and.arrow.down")
                 }
-                Text("Reinstalar desde Xcode encima de la app conserva los datos. Exportá un respaldo antes de desinstalar o cambiar de teléfono.")
+                Text("Copia automática semanal en Archivos > En mi iPhone > Sistema > Respaldos. Última: \(AutoBackup.latestDate(in: AutoBackup.defaultDirectory)?.formatted(date: .abbreviated, time: .omitted) ?? "todavía ninguna").")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryText)
+                Text("Reinstalar desde Xcode encima de la app conserva los datos. Desinstalarla borra también esas copias: antes de desinstalar o cambiar de teléfono, exportá un respaldo a otro lado.")
                     .font(.caption)
                     .foregroundStyle(Theme.secondaryText)
             }

@@ -18,15 +18,27 @@ struct SessionLogView: View {
     @State private var duration: Double = 60
     @State private var routineID: UUID?
     @State private var loaded = false
+    @State private var lastPerformances = LastPerformanceIndex()
+    @State private var timer: WODTimerConfig?
 
     var body: some View {
         Form {
             Section("Sesión") {
-                TextField("Título", text: $title)
+                if !isClassLog {
+                    TextField("Título", text: $title)
+                }
                 if let day = lateDay {
                     DatePicker("Fecha y hora", selection: $date, in: day...SistemaCalendar.addDays(1, to: day).addingTimeInterval(-1))
                 } else {
                     DatePicker("Fecha y hora", selection: $date)
+                }
+                if !isClassLog {
+                    Button {
+                        timer = results.first { $0.prescribed.kind == .circuit }.map { .from($0.prescribed) } ?? .standard(.rest)
+                    } label: {
+                        Label("Abrir temporizador", systemImage: "timer")
+                    }
+                    .accessibilityIdentifier("log.timer")
                 }
                 if case .free = mode {
                     Picker("Basar en rutina", selection: $routineID) {
@@ -48,7 +60,14 @@ struct SessionLogView: View {
 
             ForEach($results) { $result in
                 Section {
-                    BlockResultEditor(result: $result)
+                    BlockResultEditor(result: $result, last: lastPerformances)
+                    if result.prescribed.kind == .circuit {
+                        Button {
+                            timer = .from(result.prescribed)
+                        } label: {
+                            Label("Temporizador de este bloque", systemImage: "timer")
+                        }
+                    }
                 } header: {
                     Label(result.prescribed.displayName, systemImage: result.prescribed.kind.symbol)
                 } footer: {
@@ -60,12 +79,14 @@ struct SessionLogView: View {
             Section {
                 Stepper("RPE: \(rpe)", value: $rpe, in: 1...10)
                     .accessibilityIdentifier("log.rpe")
-                NumberField(label: "Duración (min)", value: $duration, identifier: "log.duration")
+                if !isClassLog {
+                    NumberField(label: "Duración (min)", value: $duration, identifier: "log.duration")
+                }
                 TextField("Notas", text: $notes, axis: .vertical)
             } header: {
                 Text("Esfuerzo")
             } footer: {
-                Text("La duración viene estimada y el XP depende de ella: poné lo que realmente duraste.")
+                Text(isClassLog ? "El XP depende de lo que duró la clase." : "La duración viene estimada y el XP depende de ella: poné lo que realmente duraste.")
             }
 
             Section("Vista previa del Sistema") {
@@ -85,10 +106,12 @@ struct SessionLogView: View {
                         .font(.caption)
                         .foregroundStyle(Theme.danger)
                 }
-                Button("Rellenar con lo prescrito") {
-                    results = results.map { BlockResult.asPrescribed($0.prescribed) }
+                if !isClassLog {
+                    Button("Rellenar con lo prescrito") {
+                        results = results.map { BlockResult.asPrescribed($0.prescribed) }
+                    }
+                    .accessibilityIdentifier("log.fillPrescribed")
                 }
-                .accessibilityIdentifier("log.fillPrescribed")
             }
         }
         .systemBackground()
@@ -105,17 +128,34 @@ struct SessionLogView: View {
             }
         }
         .onAppear(perform: setup)
+        .fullScreenCover(item: $timer) { config in
+            NavigationStack { WODTimerView(config: config, isModal: true) }
+        }
+    }
+
+    private var isClassLog: Bool {
+        if case .classLog = mode { return true }
+        return false
     }
 
     private var isPlanned: Bool {
-        if case .planned = mode { return true }
-        return false
+        switch mode {
+        case .planned: return true
+        case let .edit(session): return session.isPlanned
+        default: return false
+        }
     }
 
     /// El día planeado cuando se registra después de que pasó.
     private var lateDay: Date? {
-        guard case let .planned(_, _, day) = mode, day < SistemaCalendar.startOfDay(game.now) else { return nil }
-        return day
+        switch mode {
+        case let .planned(_, _, day):
+            return day < SistemaCalendar.startOfDay(game.now) ? day : nil
+        case let .edit(session):
+            return session.plannedDay
+        default:
+            return nil
+        }
     }
 
     private var navigationTitle: String {
@@ -123,12 +163,26 @@ struct SessionLogView: View {
         case .planned: return lateDay == nil ? "Misión de hoy" : "Día pendiente"
         case .free: return "Sesión libre"
         case .punishment: return PunishmentMission.title
+        case .edit: return "Editar sesión"
+        case .classLog: return "Registrar clase"
         }
     }
 
     private func setup() {
         guard !loaded else { return }
         loaded = true
+        if case let .edit(session) = mode {
+            lastPerformances = game.lastPerformances(excluding: session.id)
+            title = session.title
+            date = session.date
+            results = session.results
+            rpe = session.rpe
+            notes = session.notes
+            duration = session.durationMinutes
+            routineID = session.routineID
+            return
+        }
+        lastPerformances = game.lastPerformances()
         date = lateDay.map { $0.addingTimeInterval(12 * 3600) } ?? game.now
         switch mode {
         case let .planned(id, _, _):
@@ -144,6 +198,10 @@ struct SessionLogView: View {
                 CircuitExercise(exerciseName: "Salto de cuerda", seconds: 60),
             ], restBetweenRoundsSeconds: 60)))]
             duration = 25
+        case .classLog:
+            results = [BlockResult.asPrescribed(.klass(ClassPrescription(discipline: .mma, minutes: 60)))]
+        case .edit:
+            break
         }
     }
 
@@ -166,13 +224,21 @@ struct SessionLogView: View {
     }
 
     private func previewXP(compliance: Double) -> Double {
-        XPEngine.rawXP(.init(dominantKind: XPEngine.dominantKind(results.map(\.prescribed)), minutes: duration,
+        XPEngine.rawXP(.init(dominantKind: XPEngine.dominantKind(results.map(\.prescribed)),
+                             minutes: isClassLog ? (results.first?.minutes ?? duration) : duration,
                              rpe: rpe, compliance: compliance, startedAt: date))
     }
 
     private func save() {
         var finalResults = results
-        if case .free = mode {
+        if isClassLog, let klass = results.first {
+            title = klass.prescribed.klass.discipline.name
+            duration = klass.minutes ?? duration
+        }
+        var isUnplanned = isClassLog
+        if case .free = mode { isUnplanned = true }
+        if case let .edit(session) = mode, !session.isPlanned { isUnplanned = true }
+        if isUnplanned {
             // En sesiones libres lo hecho es lo prescrito: se liga al catálogo para el historial.
             let linked = game.linkExercises(finalResults.map(\.prescribed))
             for index in finalResults.indices { finalResults[index].prescribed = linked[index] }
@@ -183,11 +249,17 @@ struct SessionLogView: View {
         case let .planned(_, itineraryID, day):
             draft.itineraryID = itineraryID
             draft.plannedDay = day
-        case .free:
+        case .free, .classLog:
             break
         case .punishment:
             draft.isPunishment = true
             draft.title = PunishmentMission.title
+        case let .edit(session):
+            draft.itineraryID = session.itineraryID
+            draft.plannedDay = session.plannedDay
+            game.updateSession(session, with: draft)
+            dismiss()
+            return
         }
         game.logSession(draft)
         dismiss()
@@ -197,6 +269,7 @@ struct SessionLogView: View {
 /// Campos de "lo real" para un bloque según su tipo.
 struct BlockResultEditor: View {
     @Binding var result: BlockResult
+    var last = LastPerformanceIndex()
 
     var body: some View {
         switch result.prescribed.kind {
@@ -205,6 +278,14 @@ struct BlockResultEditor: View {
                 TextField("Ejercicio", text: $result.prescribed.strength.exerciseName)
             } else {
                 Text(result.prescribed.strength.exerciseName).font(.headline)
+            }
+            if let previous = last.find(id: result.prescribed.strength.exerciseID, name: result.prescribed.strength.exerciseName) {
+                LastPerformanceRow(previous: previous) {
+                    for index in result.sets.indices {
+                        result.sets[index].weight = previous.weightKg
+                        result.sets[index].unit = previous.unit
+                    }
+                }
             }
             ForEach($result.sets) { $set in
                 HStack {
@@ -266,6 +347,12 @@ struct BlockResultEditor: View {
                         } else {
                             IntField(label: "Reps (presc. \(exercise.reps ?? 0))", value: $result.circuitActuals[index].reps.orZero)
                         }
+                        if let previous = last.find(id: exercise.exerciseID, name: exercise.exerciseName) {
+                            LastPerformanceRow(previous: previous) {
+                                result.circuitActuals[index].weight = previous.weightKg
+                                result.circuitActuals[index].unit = previous.unit
+                            }
+                        }
                         WeightField(label: "Peso", kg: $result.circuitActuals[index].weight.orZero,
                                     unit: $result.circuitActuals[index].unit.orKg)
                     }
@@ -279,7 +366,30 @@ struct BlockResultEditor: View {
             NumberField(label: "Tiempo (min)", value: $result.minutes.orZero)
 
         case .classSession:
+            Picker("Disciplina", selection: $result.prescribed.klass.discipline) {
+                ForEach(ClassDiscipline.allCases) { Text($0.name).tag($0) }
+            }
+            .accessibilityIdentifier("log.discipline")
             NumberField(label: "Duración (min)", value: $result.minutes.orZero)
+        }
+    }
+}
+
+/// "La vez pasada: 25 lb × 6", con un toque para volver a usarlo.
+struct LastPerformanceRow: View {
+    let previous: LastPerformance
+    let use: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("La vez pasada: \(previous.text)")
+                .font(.caption)
+                .foregroundStyle(Theme.secondaryText)
+            Spacer()
+            Button("Usar", action: use)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .accessibilityIdentifier("log.useLast")
         }
     }
 }

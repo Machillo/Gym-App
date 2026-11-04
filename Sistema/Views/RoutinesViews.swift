@@ -5,9 +5,22 @@ import SwiftUI
 struct TrainingHubView: View {
     @Environment(GameService.self) private var game
     @State private var logFree = false
+    @State private var logClass = false
 
     var body: some View {
         List {
+            Section {
+                NavigationLink { WODTimerView(config: .standard(.forTime)) } label: {
+                    Label("Temporizador", systemImage: "timer")
+                }
+                .accessibilityIdentifier("hub.timer")
+                Button {
+                    logClass = true
+                } label: {
+                    Label("Registrar clase", systemImage: "figure.boxing")
+                }
+            }
+            .listRowBackground(Theme.panel)
             Section {
                 NavigationLink { ItinerariesView() } label: {
                     Label("Itinerarios", systemImage: "calendar")
@@ -37,28 +50,46 @@ struct TrainingHubView: View {
         .sheet(isPresented: $logFree) {
             NavigationStack { SessionLogView(mode: .free) }
         }
+        .sheet(isPresented: $logClass) {
+            NavigationStack { SessionLogView(mode: .classLog) }
+        }
     }
 }
 
+@MainActor
 struct SessionHistoryView: View {
+    @Environment(GameService.self) private var game
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @State private var editing: SessionLogMode?
+    @State private var toDelete: WorkoutSession?
 
     var body: some View {
         List(sessions) { session in
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(session.title).font(.headline)
-                    Spacer()
-                    Text("+\(session.xpAwarded) XP").foregroundStyle(Theme.glow)
+            Button {
+                if game.canModify(session) { editing = .edit(session) }
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(session.title).font(.headline)
+                        Spacer()
+                        Text("+\(session.xpAwarded) XP").foregroundStyle(Theme.glow)
+                    }
+                    Text("\(session.date.formatted(date: .abbreviated, time: .shortened)) · \(Format.percent(session.compliance)) · RPE \(session.rpe)")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                    Text(session.isPunishment ? "Misión de castigo" : (session.isPlanned ? "Planeada" : "No planeada"))
+                        .font(.caption2)
+                        .foregroundStyle(session.isPunishment ? Theme.danger : Theme.accent)
+                    if !session.notes.isEmpty {
+                        Text(session.notes).font(.caption).italic()
+                    }
                 }
-                Text("\(session.date.formatted(date: .abbreviated, time: .shortened)) · \(Format.percent(session.compliance)) · RPE \(session.rpe)")
-                    .font(.caption)
-                    .foregroundStyle(Theme.secondaryText)
-                Text(session.isPunishment ? "Misión de castigo" : (session.isPlanned ? "Planeada" : "No planeada"))
-                    .font(.caption2)
-                    .foregroundStyle(session.isPunishment ? Theme.danger : Theme.accent)
-                if !session.notes.isEmpty {
-                    Text(session.notes).font(.caption).italic()
+            }
+            .tint(.white)
+            .accessibilityIdentifier("history.session")
+            .swipeActions {
+                if game.canModify(session) {
+                    Button("Borrar", role: .destructive) { toDelete = session }
                 }
             }
             .listRowBackground(Theme.panel)
@@ -67,6 +98,18 @@ struct SessionHistoryView: View {
         .navigationTitle("Sesiones")
         .overlay {
             if sessions.isEmpty { ContentUnavailableView("Sin sesiones", systemImage: "tray") }
+        }
+        .sheet(item: $editing) { mode in
+            NavigationStack { SessionLogView(mode: mode) }
+        }
+        .confirmationDialog("¿Borrar esta sesión?", isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }),
+                            titleVisibility: .visible) {
+            Button("Borrar", role: .destructive) {
+                if let toDelete { game.deleteSession(toDelete) }
+                toDelete = nil
+            }
+        } message: {
+            Text("Se le resta el XP y los atributos que dio. Una falta o racha de un día ya cerrado no cambia.")
         }
     }
 }

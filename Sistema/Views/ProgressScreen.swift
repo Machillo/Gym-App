@@ -9,11 +9,19 @@ struct ProgressScreen: View {
     @Query(sort: \PenaltyEvent.date, order: .reverse) private var penalties: [PenaltyEvent]
     @Query(sort: \Itinerary.startDate, order: .reverse) private var itineraries: [Itinerary]
     @Query private var sessions: [WorkoutSession]
+    @Query private var players: [Player]
+    @Query private var exerciseLogs: [ExerciseLog]
+    @Query(sort: \Exercise.name) private var exercises: [Exercise]
+    @Query(sort: \BodyEntry.date) private var bodyEntries: [BodyEntry]
 
     var body: some View {
         let _ = game.revision
         ScrollView {
             VStack(spacing: 16) {
+                weeklySummary
+                challenges
+                bodyPanel
+                exerciseProgress
                 xpChart
                 complianceByItinerary
                 rankTimeline
@@ -23,6 +31,109 @@ struct ProgressScreen: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("Progreso")
+    }
+
+    private func summary(weekOf date: Date) -> WeeklySummary {
+        WeeklySummary.make(weekOf: date, sessions: sessions.filter { !$0.isPunishment }.map(\.digest),
+                           volumes: exerciseLogs.map { ($0.date, $0.volume) }, records: exerciseLogs.compactMap(\.markRecord))
+    }
+
+    private var weeklySummary: some View {
+        let current = summary(weekOf: game.now)
+        let previous = summary(weekOf: SistemaCalendar.addDays(-7, to: game.now))
+        return VStack(alignment: .leading, spacing: 8) {
+            PanelHeader(title: "Esta semana", symbol: "calendar")
+            summaryRow("Sesiones", "\(current.sessions)", previous: "\(previous.sessions)")
+            summaryRow("Tiempo", Format.minutes(current.minutes), previous: Format.minutes(previous.minutes))
+            summaryRow("Peso levantado", volumeText(current.volumeKg), previous: volumeText(previous.volumeKg))
+            summaryRow("Clases", "\(current.classes)", previous: "\(previous.classes)")
+            summaryRow("Marcas nuevas", "\(current.records)", previous: "\(previous.records)")
+        }
+        .systemPanel()
+    }
+
+    private func summaryRow(_ label: String, _ value: String, previous: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(value).font(Theme.mono(14, weight: .bold)).foregroundStyle(Theme.glow)
+                Text("antes: \(previous)").font(.caption2).foregroundStyle(Theme.secondaryText)
+            }
+        }
+    }
+
+    private func volumeText(_ kg: Double) -> String {
+        "\(Int(kg.rounded())) kg"
+    }
+
+    private var challenges: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            PanelHeader(title: "Retos", symbol: "trophy.fill")
+            if let player = players.first {
+                let active = ChallengeEngine.active(game.challengeInput(player: player))
+                HStack(spacing: 12) {
+                    ForEach(active.prefix(4)) { challenge in
+                        VStack(spacing: 4) {
+                            ChallengeRing(fraction: challenge.fraction, complete: challenge.isComplete, size: 56)
+                            Text(challenge.title)
+                                .font(.caption2)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            NavigationLink("Ver todos los retos") { ChallengesView() }
+                .font(.footnote)
+                .accessibilityIdentifier("progress.challenges")
+        }
+        .systemPanel()
+    }
+
+    private var bodyPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PanelHeader(title: "Cuerpo", symbol: "figure.stand")
+            let snapshots = bodyEntries.map(\.snapshot)
+            let unit = bodyEntries.last(where: { $0.weightKg != nil })?.weightUnit ?? .kg
+            ForEach([BodyMetric.weight, .bodyFat, .measure(.waist), .measure(.armRight)]) { metric in
+                if let trend = BodyTrend.make(metric, entries: snapshots) {
+                    HStack {
+                        Text(metric.name)
+                        Spacer()
+                        Text(metric.text(trend.current, weightUnit: unit)).font(Theme.mono(14, weight: .bold)).foregroundStyle(Theme.glow)
+                    }
+                }
+            }
+            NavigationLink(bodyEntries.isEmpty ? "Registrar peso, grasa y medidas" : "Ver todo") { BodyView() }
+                .font(.footnote)
+                .accessibilityIdentifier("progress.body")
+        }
+        .systemPanel()
+    }
+
+    /// Los ejercicios entrenados más recientemente, con su gráfico.
+    private var exerciseProgress: some View {
+        let latest = Dictionary(grouping: exerciseLogs.filter { $0.exerciseID != nil && $0.weight > 0 }, by: \.exerciseID)
+            .compactMapValues { $0.map(\.date).max() }
+        let recent = exercises.filter { latest[$0.id] != nil }
+            .sorted { (latest[$0.id] ?? .distantPast) > (latest[$1.id] ?? .distantPast) }
+            .prefix(6)
+        return VStack(alignment: .leading, spacing: 10) {
+            PanelHeader(title: "Tus ejercicios", symbol: "dumbbell.fill")
+            if recent.isEmpty {
+                Text("Registrá pesos en tus sesiones para ver cómo progresa cada ejercicio.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.secondaryText)
+            }
+            ForEach(Array(recent)) { exercise in
+                NavigationLink(exercise.name) { ExerciseDetailView(exercise: exercise) }
+            }
+            NavigationLink("Ver todos") { ExercisesView() }
+                .font(.footnote)
+        }
+        .systemPanel()
     }
 
     private var xpChart: some View {
