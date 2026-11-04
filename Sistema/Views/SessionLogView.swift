@@ -19,7 +19,7 @@ struct SessionLogView: View {
     @State private var routineID: UUID?
     @State private var loaded = false
     @State private var lastPerformances = LastPerformanceIndex()
-    @State private var timer: WODTimerConfig?
+    @State private var timer: TimerRequest?
 
     var body: some View {
         Form {
@@ -34,7 +34,7 @@ struct SessionLogView: View {
                 }
                 if !isClassLog {
                     Button {
-                        timer = results.first { $0.prescribed.kind == .circuit }.map { .from($0.prescribed) } ?? .standard(.rest)
+                        openTimer(for: results.first { $0.prescribed.kind == .circuit })
                     } label: {
                         Label("Abrir temporizador", systemImage: "timer")
                     }
@@ -63,7 +63,7 @@ struct SessionLogView: View {
                     BlockResultEditor(result: $result, last: lastPerformances)
                     if result.prescribed.kind == .circuit {
                         Button {
-                            timer = .from(result.prescribed)
+                            openTimer(for: result)
                         } label: {
                             Label("Temporizador de este bloque", systemImage: "timer")
                         }
@@ -128,8 +128,24 @@ struct SessionLogView: View {
             }
         }
         .onAppear(perform: setup)
-        .fullScreenCover(item: $timer) { config in
-            NavigationStack { WODTimerView(config: config, isModal: true) }
+        .fullScreenCover(item: $timer) { request in
+            NavigationStack {
+                WODTimerSetupView(config: request.config, isModal: true, onResult: resultHandler(for: request))
+            }
+        }
+    }
+
+    private func openTimer(for result: BlockResult?) {
+        timer = TimerRequest(config: result.map { .from($0.prescribed) } ?? .standard(.rest),
+                             amrapBlockID: result?.prescribed.circuit.isAMRAP == true ? result?.id : nil)
+    }
+
+    private func resultHandler(for request: TimerRequest) -> ((WODTimerResult) -> Void)? {
+        guard let blockID = request.amrapBlockID else { return nil }
+        return { timerResult in
+            guard let index = results.firstIndex(where: { $0.id == blockID }) else { return }
+            results[index].rounds = timerResult.rounds
+            results[index].minutes = timerResult.minutes
         }
     }
 
@@ -264,6 +280,13 @@ struct SessionLogView: View {
         game.logSession(draft)
         dismiss()
     }
+}
+
+/// Temporizador pedido desde una sesión. El AMRAP recibe sus rondas y su tiempo al terminar.
+private struct TimerRequest: Identifiable {
+    var config: WODTimerConfig
+    var amrapBlockID: UUID?
+    var id: UUID { config.id }
 }
 
 /// Campos de "lo real" para un bloque según su tipo.

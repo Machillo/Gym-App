@@ -10,7 +10,7 @@ struct TrainingHubView: View {
     var body: some View {
         List {
             Section {
-                NavigationLink { WODTimerView(config: .standard(.forTime)) } label: {
+                NavigationLink { WODTimerHomeView() } label: {
                     Label("Temporizador", systemImage: "timer")
                 }
                 .accessibilityIdentifier("hub.timer")
