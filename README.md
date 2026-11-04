@@ -113,7 +113,9 @@ Si el XP cae por debajo del piso del rango, perdés el rango y tenés que volver
 
 ### Temporizador
 
-Modos For Time, AMRAP, EMOM, Tabata y Descanso, con preparación, cuenta regresiva y sonido. Se abre desde Entrenar o desde el registro de una sesión, ya configurado con el bloque. Cuenta por hora real y mantiene la pantalla encendida; si el teléfono se bloquea, una notificación avisa al terminar. Los sonidos siguen el interruptor de silencio del iPhone; la vibración no.
+AMRAP, For Time (con o sin límite), EMOM, Tabata, Mix (varios temporizadores seguidos) y Descanso. Cada uno admite preparación y series con descanso entre ellas; For Time y AMRAP, señal por intervalo; EMOM, modo Death By. Recuerda la última configuración de cada modo y muestra el tiempo total.
+
+Se abre desde Entrenar o desde el registro de una sesión, ya configurado con el bloque; al abrirlo desde un AMRAP, las rondas y el tiempo pasan a la sesión. Cuenta por hora real y mantiene la pantalla encendida. El sonido se oye aunque el iPhone esté en silencio y se mezcla con tu música; si el teléfono se bloquea deja de sonar, pero una notificación avisa al terminar.
 
 ### Último peso
 
