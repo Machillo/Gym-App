@@ -111,6 +111,38 @@ Se evalúan al abrir la app y al volver a primer plano, día cerrado por día ce
 
 Si el XP cae por debajo del piso del rango, perdés el rango y tenés que volver a pasar la prueba (sin repetir el tiempo mínimo). Piso absoluto: Rango E, nivel 1. Las sesiones libres dan XP pero no borran faltas.
 
+### Temporizador
+
+Modos For Time, AMRAP, EMOM, Tabata y Descanso, con preparación, cuenta regresiva y sonido. Se abre desde Entrenar o desde el registro de una sesión, ya configurado con el bloque. Cuenta por hora real y mantiene la pantalla encendida; si el teléfono se bloquea, una notificación avisa al terminar. Los sonidos siguen el interruptor de silencio del iPhone; la vibración no.
+
+### Último peso
+
+Al registrar, cada ejercicio muestra el peso más alto de la última vez que lo hiciste y **Usar** lo copia con su unidad.
+
+### Corregir sesiones
+
+En Entrenar > Historial de sesiones, tocar una sesión la edita y deslizarla la borra. El XP y los atributos se recalculan con las mismas reglas y topes. No cambia lo que un día ya cerrado dejó (faltas, racha o pruebas superadas). Las sesiones de castigo no se pueden corregir.
+
+### Clases
+
+Box, Muay Thai y MMA se registran con **Registrar clase**. Las tres cuentan para las pruebas de ascenso.
+
+### Cuerpo
+
+En Progreso > Cuerpo se apunta peso (kg o lb), grasa y 11 medidas en cm, con gráfico y cambio desde el primer registro. No da XP.
+
+### Perfil
+
+Se calcula solo: el nivel sale del rango (Novato, Aprendiz, Competidor, Veterano, Élite, Maestro, Leyenda) y el estilo, de los minutos de las últimas 8 semanas entre pelea, fuerza y acondicionamiento. Cada cambio queda en **Tu evolución**.
+
+### Retos
+
+Semanales y mensuales, con metas que se ajustan a tu periodo anterior, más logros permanentes. No dan XP, para no alterar la curva de progresión.
+
+### Respaldo y vencimiento
+
+Cada 7 días se guarda una copia en Archivos > En mi iPhone > Sistema > Respaldos (quedan las últimas 4). Desinstalar la app también las borra. La app lee cuándo vence su perfil de instalación y avisa 48, 24 y 3 horas antes.
+
 ### Días pendientes
 
 Los días planeados de los últimos 7 días que no tienen sesión aparecen en Estado y se pueden registrar tarde: suman XP, atributos e historial. No borran una falta ya cobrada ni suman racha, porque ese día ya se evaluó.
