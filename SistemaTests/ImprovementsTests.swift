@@ -96,6 +96,75 @@ final class ImprovementsTests: XCTestCase {
         XCTAssertEqual(clock.elapsed(at: T.day(0).addingTimeInterval(105)), 15)
     }
 
+    func testSetsRepeatEverythingWithRestBetween() {
+        let config = WODTimerConfig(mode: .amrap, minutes: 5, prepareSeconds: 10, sets: 3, restBetweenSets: 60)
+        XCTAssertEqual(config.phases.map(\.kind), [.prepare, .work, .rest, .work, .rest, .work])
+        XCTAssertEqual(config.totalSeconds, 10 + 300 * 3 + 60 * 2)
+        XCTAssertEqual(config.reading(at: 10 + 300 + 60 + 1).phase?.set, 2)
+    }
+
+    func testForTimeWithoutLimitEndsByHand() {
+        let config = WODTimerConfig.standard(.forTime)
+        XCTAssertTrue(config.isOpenEnded)
+        XCTAssertFalse(config.reading(at: 7200).isFinished)
+        XCTAssertEqual(config.reading(at: 10 + 125).displaySeconds, 125)
+        XCTAssertFalse(WODTimerConfig(mode: .forTime, minutes: 10).isOpenEnded)
+    }
+
+    func testDeathByHasNoFixedRounds() {
+        var config = WODTimerConfig.standard(.emom)
+        XCTAssertFalse(config.isOpenEnded)
+        XCTAssertEqual(config.phases.count, 11)
+        config.deathBy = true
+        XCTAssertTrue(config.isOpenEnded)
+        XCTAssertEqual(config.reading(at: 10 + 60 * 25 + 1).phase?.round, 26)
+    }
+
+    func testIntervalSignalOnlyWhenOn() {
+        var config = WODTimerConfig(mode: .forTime, minutes: 10, prepareSeconds: 0)
+        func cue(_ a: TimeInterval, _ b: TimeInterval) -> TimerCue? {
+            config.cue(from: config.reading(at: a), to: config.reading(at: b))
+        }
+        XCTAssertNil(cue(59.95, 60.05))
+        config.intervalSeconds = 60
+        XCTAssertEqual(cue(59.95, 60.05), .interval)
+        XCTAssertNil(cue(60.05, 60.15))
+    }
+
+    func testMixChainsSegmentsWithRestAndSinglePreparation() {
+        let config = WODTimerConfig(mode: .mix, restSeconds: 30, prepareSeconds: 10, segments: [
+            WODTimerConfig(mode: .amrap, minutes: 2, prepareSeconds: 10),
+            WODTimerConfig(mode: .tabata, workSeconds: 20, restSeconds: 10, rounds: 2, prepareSeconds: 10),
+        ])
+        XCTAssertEqual(config.phases.map(\.kind), [.prepare, .work, .rest, .work, .rest, .work])
+        XCTAssertEqual(config.totalSeconds, 10 + 120 + 30 + 20 + 10 + 20)
+        XCTAssertEqual(config.reading(at: 11).phase?.label, "AMRAP")
+    }
+
+    func testNextPhaseAndSkip() {
+        let config = WODTimerConfig(mode: .tabata, workSeconds: 20, restSeconds: 10, rounds: 2, prepareSeconds: 0)
+        let first = config.reading(at: 5)
+        XCTAssertEqual(config.nextPhase(after: first)?.kind, .rest)
+        var clock = TimerClock()
+        clock.start(at: T.day(0))
+        clock.skip(first.remaining)
+        XCTAssertEqual(config.reading(at: clock.elapsed(at: T.day(0).addingTimeInterval(5))).phase?.kind, .rest)
+    }
+
+    func testConfigIsRememberedAsJSON() throws {
+        var config = WODTimerConfig.standard(.mix)
+        config.sets = 3
+        let copy = try JSONDecoder().decode(WODTimerConfig.self, from: JSONEncoder().encode(config))
+        XCTAssertEqual(copy, config)
+        XCTAssertEqual(copy.segments.count, 2)
+    }
+
+    func testToneIsValidWAV() throws {
+        let data = TimerTone.wav(frequency: 880, duration: 0.1)
+        XCTAssertEqual(data.prefix(4), Data("RIFF".utf8))
+        XCTAssertEqual(data.count, 44 + 4410 * 2)
+    }
+
     func testTimerConfigFromBlock() {
         let amrap = RoutineBlock.circuit(CircuitPrescription(rounds: 1, format: .amrap, timeCapMinutes: 12))
         XCTAssertEqual(WODTimerConfig.from(amrap).mode, .amrap)
