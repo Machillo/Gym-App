@@ -47,6 +47,8 @@ final class GameService {
     let clock: DateProvider
     let notifications: NotificationScheduling
 
+    /// Cuándo vence la instalación de la cuenta gratuita; nil en el simulador.
+    var appExpiry: Date? = AppExpiry.current
     var announcements: [Announcement] = []
     /// Se incrementa en cada cambio para que las vistas que leen del servicio se refresquen.
     private(set) var revision = 0
@@ -240,7 +242,12 @@ final class GameService {
 
     @discardableResult
     func createItinerary(name: String, start: Date, end: Date, plan: [DayPlan]) -> Itinerary {
-        for it in itineraries() { it.isActive = false }
+        let firstDay = SistemaCalendar.startOfDay(start)
+        for it in itineraries() {
+            it.isActive = false
+            // Archivado de verdad: un itinerario viejo no puede seguir cobrando faltas.
+            if it.endDate >= firstDay { it.endDate = SistemaCalendar.addDays(-1, to: firstDay) }
+        }
         let itinerary = Itinerary(name: name, startDate: start, endDate: max(end, start), plan: plan, isActive: true, now: now)
         context.insert(itinerary)
         save()
@@ -312,6 +319,7 @@ final class GameService {
         announce(outcome.progressEvents, player: player)
         try? context.save()
         refreshTrials(player: player)
+        refreshProfileAndChallenges(player: player)
         save()
         rescheduleNotifications()
     }
@@ -370,10 +378,178 @@ final class GameService {
         announce(events, player: player)
         try? context.save()
         refreshTrials(player: player)
+        refreshProfileAndChallenges(player: player)
         save()
         rescheduleNotifications()
         Haptics.success()
         return SessionOutcome(session: session, xp: xp, rawXP: raw, events: events)
+    }
+
+    // MARK: - Corregir sesiones
+
+    /// Las sesiones de castigo no se corrigen: cumplieron una misión y quedan como están.
+    func canModify(_ session: WorkoutSession) -> Bool { !session.isPunishment }
+
+    /// Rehace la sesión con las mismas reglas de XP y topes. No cambia lo que el día ya evaluó (racha o faltas).
+    func updateSession(_ session: WorkoutSession, with draft: SessionDraft) {
+        guard let player = player(), canModify(session) else { return }
+        removeStats(of: session, player: player)
+        deleteExerciseLogs(of: session)
+
+        let compliance = ComplianceEngine.sessionCompliance(draft.results)
+        let blocks = draft.results.map(\.prescribed)
+        let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
+                                          rpe: draft.rpe, compliance: compliance, startedAt: draft.date)
+        let others = sessions().filter { $0.id != session.id }
+        let day = SistemaCalendar.startOfDay(draft.date)
+        let week = SistemaCalendar.startOfWeek(draft.date)
+        let xp = XPEngine.cappedXP(
+            raw: XPEngine.rawXP(input),
+            earnedToday: others.filter { SistemaCalendar.startOfDay($0.date) == day }.reduce(0) { $0 + $1.xpAwarded },
+            earnedThisWeek: others.filter { SistemaCalendar.startOfWeek($0.date) == week }.reduce(0) { $0 + $1.xpAwarded }
+        )
+        let delta = xp - session.xpAwarded
+
+        session.date = draft.date
+        session.title = draft.title
+        session.results = draft.results
+        session.rpe = draft.rpe
+        session.notes = draft.notes
+        session.durationMinutes = draft.durationMinutes
+        session.routineID = draft.routineID
+        session.compliance = compliance
+        session.xpAwarded = xp
+        recordExerciseLogs(for: session, results: draft.results)
+        addStats(of: session, player: player)
+
+        var progress = player.progress
+        let events = delta >= 0 ? progress.applyGain(delta, now: now) : progress.applyLoss(-delta, now: now)
+        player.progress = progress
+        log(.info, "Sesión corregida: \(session.title).", xpDelta: delta, player: player)
+        finishCorrection(events: events, player: player)
+    }
+
+    /// Quita la sesión y lo que dio. Si era de un día planeado que aún no cierra, ese día vuelve a estar pendiente.
+    func deleteSession(_ session: WorkoutSession) {
+        guard let player = player(), canModify(session) else { return }
+        removeStats(of: session, player: player)
+        deleteExerciseLogs(of: session)
+        var progress = player.progress
+        let events = progress.applyLoss(session.xpAwarded, now: now)
+        player.progress = progress
+        log(.info, "Sesión borrada: \(session.title).", xpDelta: -session.xpAwarded, player: player)
+        context.delete(session)
+        finishCorrection(events: events, player: player)
+    }
+
+    private func finishCorrection(events: [ProgressEvent], player: Player) {
+        announce(events, player: player)
+        try? context.save()
+        refreshTrials(player: player)
+        refreshProfileAndChallenges(player: player)
+        save()
+        rescheduleNotifications()
+    }
+
+    private func statGains(of session: WorkoutSession) -> PlayerStats {
+        let catalogStats = Dictionary(uniqueKeysWithValues: exercises().map { ($0.id, $0.stats) })
+        return StatsEngine.gains(results: session.results, compliance: session.compliance, planned: session.plannedDay != nil,
+                                 early: XPEngine.isEarly(session.date), exerciseStats: catalogStats)
+    }
+
+    private func addStats(of session: WorkoutSession, player: Player) {
+        let gains = statGains(of: session)
+        var stats = player.stats
+        for kind in StatKind.allCases { stats[kind] += gains[kind] }
+        player.stats = stats
+    }
+
+    private func removeStats(of session: WorkoutSession, player: Player) {
+        let gains = statGains(of: session)
+        var stats = player.stats
+        for kind in StatKind.allCases { stats[kind] = max(0, stats[kind] - gains[kind]) }
+        player.stats = stats
+    }
+
+    private func deleteExerciseLogs(of session: WorkoutSession) {
+        for log in exerciseLogs() where log.sessionID == session.id { context.delete(log) }
+    }
+
+    /// Último peso por ejercicio, sin contar la sesión que se está corrigiendo.
+    func lastPerformances(excluding sessionID: UUID? = nil) -> LastPerformanceIndex {
+        LastPerformanceIndex(sessions: sessions().filter { $0.id != sessionID }.map(\.digest))
+    }
+
+    // MARK: - Cuerpo
+
+    func bodyEntries() -> [BodyEntry] {
+        (try? context.fetch(FetchDescriptor<BodyEntry>(sortBy: [SortDescriptor(\.date)]))) ?? []
+    }
+
+    func saveBodyEntry(_ entry: BodyEntry?, date: Date, weightKg: Double?, weightUnit: WeightUnit, bodyFatPercent: Double?,
+                       measures: [BodyMeasure: Double], notes: String) {
+        if let entry {
+            entry.date = date
+            entry.weightKg = weightKg
+            entry.weightUnitRaw = weightUnit.rawValue
+            entry.bodyFatPercent = bodyFatPercent
+            entry.measures = measures
+            entry.notes = notes
+        } else {
+            context.insert(BodyEntry(date: date, weightKg: weightKg, weightUnit: weightUnit, bodyFatPercent: bodyFatPercent,
+                                     measures: measures, notes: notes))
+        }
+        try? context.save()
+        if let player = player() { refreshProfileAndChallenges(player: player) }
+        save()
+    }
+
+    func deleteBodyEntry(_ entry: BodyEntry) {
+        context.delete(entry)
+        save()
+    }
+
+    // MARK: - Perfil y retos
+
+    func profile(player: Player) -> FighterProfile {
+        FighterProfile.make(sessions: sessions().map(\.digest), stats: player.stats, rank: player.position.rank, now: now)
+    }
+
+    func challengeInput(player: Player) -> ChallengeInput {
+        ChallengeInput(sessions: sessions().map(\.digest), itineraries: itineraries().map(\.snapshot),
+                       records: exerciseLogs().compactMap(\.markRecord), bodyEntryDates: bodyEntries().map(\.date),
+                       maxStreak: player.maxStreak, now: now)
+    }
+
+    func awards() -> [ChallengeAward] {
+        (try? context.fetch(FetchDescriptor<ChallengeAward>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+    }
+
+    /// Anuncia los retos recién cumplidos y cuando el perfil evoluciona. No dan XP: la curva no se toca.
+    private func refreshProfileAndChallenges(player: Player) {
+        let input = challengeInput(player: player)
+        let earned = Set(awards().map(\.key))
+        let new = (ChallengeEngine.active(input) + ChallengeEngine.milestones(input))
+            .filter { $0.isComplete && !earned.contains($0.key) }
+        for challenge in new {
+            context.insert(ChallengeAward(key: challenge.key, title: challenge.title, detail: challenge.detail, date: now))
+        }
+        if !new.isEmpty {
+            announcements.append(Announcement(headline: new.count == 1 ? "RETO CUMPLIDO" : "RETOS CUMPLIDOS",
+                                              message: new.map(\.title).joined(separator: " · "), positive: true))
+        }
+        if let title = profile(player: player).title, title != player.profileTitle {
+            player.profileTitle = title
+            log(.profile, "Ahora sos \(title).", player: player)
+            announcements.append(Announcement(headline: "PERFIL ACTUALIZADO", message: "Ahora sos \(title).", positive: true))
+        }
+    }
+
+    // MARK: - Respaldo automático
+
+    func runAutoBackupIfDue() {
+        guard player() != nil else { return }
+        try? AutoBackup.runIfDue(context: context, now: now)
     }
 
     private func recordExerciseLogs(for session: WorkoutSession, results: [BlockResult]) {
@@ -534,8 +710,9 @@ final class GameService {
     }
 
     func rescheduleNotifications() {
+        let expiryNotices = AppExpiry.notices(expiry: appExpiry, now: now)
         guard let player = player(), let itinerary = activeItinerary() else {
-            notifications.replaceAll(with: [])
+            notifications.replaceAll(with: expiryNotices)
             return
         }
         var names: [Weekday: String] = [:]
@@ -546,7 +723,8 @@ final class GameService {
         let plan = NotificationPlanner.plan(itinerary: itinerary.snapshot, routineNames: names,
                                             reminderHour: player.reminderHour, reminderMinute: player.reminderMinute,
                                             loggedPlannedDays: logged, injuries: player.injuries, now: now)
-        notifications.replaceAll(with: plan)
+        // Primero los avisos de vencimiento: el servicio programa solo los primeros 60.
+        notifications.replaceAll(with: expiryNotices + plan)
     }
 
     // MARK: - Utilidades

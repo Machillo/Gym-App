@@ -16,6 +16,9 @@ struct BackupDocument: Codable, Equatable {
     var penalties: [PenaltyDTO]
     var trials: [TrialDTO]
     var logs: [LogDTO]
+    // Opcionales: los respaldos anteriores no los traen.
+    var bodyEntries: [BodyDTO]?
+    var awards: [AwardDTO]?
 
     struct PlayerDTO: Codable, Equatable {
         var id: UUID, name: String, createdAt: Date, totalXP: Int, overflowXP: Int
@@ -24,6 +27,7 @@ struct BackupDocument: Codable, Equatable {
         var ledger: PenaltyLedger, injuries: [InjuryPeriod]
         var lastCalculatedAt: Date, reminderHour: Int, reminderMinute: Int
         var priorHistoryXP: Int?
+        var profileTitle: String?
     }
 
     struct ItineraryDTO: Codable, Equatable {
@@ -61,6 +65,15 @@ struct BackupDocument: Codable, Equatable {
     struct LogDTO: Codable, Equatable {
         var id: UUID, date: Date, kindRaw: String, message: String, xpDelta: Int, totalXPAfter: Int
     }
+
+    struct BodyDTO: Codable, Equatable {
+        var id: UUID, date: Date, weightKg: Double?, weightUnitRaw: String?, bodyFatPercent: Double?
+        var measures: [BodyMeasure: Double], notes: String
+    }
+
+    struct AwardDTO: Codable, Equatable {
+        var key: String, title: String, detail: String, date: Date
+    }
 }
 
 enum BackupError: LocalizedError {
@@ -82,7 +95,8 @@ enum BackupService {
                         unlockedRankRaw: p.unlockedRankRaw, highestRankRaw: p.highestRankRaw, rankEnteredAt: p.rankEnteredAt,
                         strength: p.strength, endurance: p.endurance, technique: p.technique, discipline: p.discipline,
                         vitality: p.vitality, ledger: p.ledger, injuries: p.injuries, lastCalculatedAt: p.lastCalculatedAt,
-                        reminderHour: p.reminderHour, reminderMinute: p.reminderMinute, priorHistoryXP: p.priorHistoryXP)
+                        reminderHour: p.reminderHour, reminderMinute: p.reminderMinute, priorHistoryXP: p.priorHistoryXP,
+                        profileTitle: p.profileTitle)
         }
         let itineraries: [D.ItineraryDTO] = try context.fetch(FetchDescriptor<Itinerary>()).map { i in
             D.ItineraryDTO(id: i.id, name: i.name, startDate: i.startDate, endDate: i.endDate, isActive: i.isActive,
@@ -118,6 +132,13 @@ enum BackupService {
             D.LogDTO(id: l.id, date: l.date, kindRaw: l.kindRaw, message: l.message, xpDelta: l.xpDelta,
                      totalXPAfter: l.totalXPAfter)
         }
+        let bodyEntries: [D.BodyDTO] = try context.fetch(FetchDescriptor<BodyEntry>()).map { b in
+            D.BodyDTO(id: b.id, date: b.date, weightKg: b.weightKg, weightUnitRaw: b.weightUnitRaw,
+                      bodyFatPercent: b.bodyFatPercent, measures: b.measures, notes: b.notes)
+        }
+        let awards: [D.AwardDTO] = try context.fetch(FetchDescriptor<ChallengeAward>()).map { a in
+            D.AwardDTO(key: a.key, title: a.title, detail: a.detail, date: a.date)
+        }
 
         return BackupDocument(
             version: BackupDocument.currentVersion,
@@ -130,7 +151,9 @@ enum BackupService {
             exerciseLogs: logsByExercise.sorted { $0.id.uuidString < $1.id.uuidString },
             penalties: penalties.sorted { $0.id.uuidString < $1.id.uuidString },
             trials: trials.sorted { $0.id.uuidString < $1.id.uuidString },
-            logs: logs.sorted { $0.id.uuidString < $1.id.uuidString }
+            logs: logs.sorted { $0.id.uuidString < $1.id.uuidString },
+            bodyEntries: bodyEntries.sorted { $0.id.uuidString < $1.id.uuidString },
+            awards: awards.sorted { $0.key < $1.key }
         )
     }
 
@@ -174,6 +197,7 @@ enum BackupService {
             player.reminderHour = p.reminderHour
             player.reminderMinute = p.reminderMinute
             player.priorHistoryXP = p.priorHistoryXP
+            player.profileTitle = p.profileTitle
             context.insert(player)
         }
         for i in doc.itineraries {
@@ -238,6 +262,16 @@ enum BackupService {
             entry.kindRaw = l.kindRaw
             context.insert(entry)
         }
+        for b in doc.bodyEntries ?? [] {
+            let entry = BodyEntry(date: b.date, weightKg: b.weightKg, weightUnit: .kg, bodyFatPercent: b.bodyFatPercent,
+                                  measures: b.measures, notes: b.notes)
+            entry.id = b.id
+            entry.weightUnitRaw = b.weightUnitRaw
+            context.insert(entry)
+        }
+        for a in doc.awards ?? [] {
+            context.insert(ChallengeAward(key: a.key, title: a.title, detail: a.detail, date: a.date))
+        }
         try context.save()
     }
 
@@ -246,6 +280,8 @@ enum BackupService {
         func wipe<T: PersistentModel>(_ type: T.Type) {
             for object in (try? context.fetch(FetchDescriptor<T>())) ?? [] { context.delete(object) }
         }
+        wipe(ChallengeAward.self)
+        wipe(BodyEntry.self)
         wipe(SystemLogEntry.self)
         wipe(AscensionTrial.self)
         wipe(PenaltyEvent.self)

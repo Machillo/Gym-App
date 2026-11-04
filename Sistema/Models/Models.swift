@@ -48,6 +48,8 @@ final class Player {
     var reminderMinute: Int
     /// XP reconocido por entrenamiento anterior a la app. Se acredita una sola vez.
     var priorHistoryXP: Int?
+    /// Último perfil anunciado ("Peleador de MMA · Competidor"), para detectar cuando evoluciona.
+    var profileTitle: String?
 
     init(name: String, now: Date) {
         id = UUID()
@@ -268,6 +270,11 @@ final class WorkoutSession {
 
     var isPlanned: Bool { plannedDay != nil }
 
+    var digest: SessionDigest {
+        SessionDigest(id: id, date: date, results: results, plannedDay: plannedDay, compliance: compliance,
+                      isPunishment: isPunishment, durationMinutes: durationMinutes)
+    }
+
     var snapshot: SessionSnapshot {
         SessionSnapshot(id: id, date: date, plannedDay: plannedDay, compliance: compliance, xpAwarded: xpAwarded,
                         isPunishment: isPunishment, minutes: durationMinutes,
@@ -383,7 +390,7 @@ final class AscensionTrial {
 }
 
 enum LogKind: String, Codable {
-    case info, gain, levelUp, levelDown, rank, penalty, mission, trial
+    case info, gain, levelUp, levelDown, rank, penalty, mission, trial, profile
 }
 
 /// Bitácora del Sistema.
@@ -408,10 +415,62 @@ final class SystemLogEntry {
     var kind: LogKind { LogKind(rawValue: kindRaw) ?? .info }
 }
 
+/// Un registro del cuerpo. Todo es opcional: se apunta lo que se midió ese día.
+@Model
+final class BodyEntry {
+    @Attribute(.unique) var id: UUID
+    var date: Date
+    var weightKg: Double?
+    /// Unidad en que se escribió el peso; se guarda en kg.
+    var weightUnitRaw: String?
+    var bodyFatPercent: Double?
+    /// [BodyMeasure: cm] en JSON.
+    var measuresData: Data
+    var notes: String
+
+    init(date: Date, weightKg: Double?, weightUnit: WeightUnit, bodyFatPercent: Double?, measures: [BodyMeasure: Double], notes: String) {
+        id = UUID()
+        self.date = date
+        self.weightKg = weightKg
+        weightUnitRaw = weightUnit.rawValue
+        self.bodyFatPercent = bodyFatPercent
+        measuresData = JSONCoding.encode(measures)
+        self.notes = notes
+    }
+
+    var weightUnit: WeightUnit { weightUnitRaw.flatMap(WeightUnit.init(rawValue:)) ?? .kg }
+
+    var measures: [BodyMeasure: Double] {
+        get { JSONCoding.decode([BodyMeasure: Double].self, from: measuresData, default: [:]) }
+        set { measuresData = JSONCoding.encode(newValue) }
+    }
+
+    var snapshot: BodySnapshot {
+        BodySnapshot(date: date, weightKg: weightKg, bodyFatPercent: bodyFatPercent, measures: measures)
+    }
+}
+
+/// Reto o logro ya ganado. Queda aunque después se edite el historial.
+@Model
+final class ChallengeAward {
+    @Attribute(.unique) var key: String
+    var title: String
+    var detail: String
+    var date: Date
+
+    init(key: String, title: String, detail: String, date: Date) {
+        self.key = key
+        self.title = title
+        self.detail = detail
+        self.date = date
+    }
+}
+
 enum SistemaSchema {
     static let models: [any PersistentModel.Type] = [
         Player.self, Itinerary.self, Routine.self, Exercise.self, WorkoutSession.self,
         ExerciseLog.self, PenaltyEvent.self, AscensionTrial.self, SystemLogEntry.self,
+        BodyEntry.self, ChallengeAward.self,
     ]
 
     static func makeContainer(inMemory: Bool) throws -> ModelContainer {

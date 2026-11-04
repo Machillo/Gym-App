@@ -5,7 +5,7 @@ enum TrialRequirement: Codable, Hashable {
     case consistency(weeks: Int, minCompliance: Double)
     /// Mejorar en un % tu mejor marca registrada en algún ejercicio o cardio.
     case improvement(percent: Double)
-    /// Completar N clases de box/Muay Thai dentro del rango.
+    /// Completar N clases de box, Muay Thai o MMA dentro del rango.
     case classes(count: Int)
 
     var description: String {
@@ -15,7 +15,7 @@ enum TrialRequirement: Codable, Hashable {
         case let .improvement(percent):
             return "Mejorar \(Format.percent(percent)) una marca personal (e1RM o ritmo de cardio)"
         case let .classes(count):
-            return "Completar \(count) clases de box o Muay Thai en este rango"
+            return "Completar \(count) clases de box, Muay Thai o MMA en este rango"
         }
     }
 }

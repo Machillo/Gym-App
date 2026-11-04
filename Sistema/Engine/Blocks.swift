@@ -25,10 +25,17 @@ enum BlockKind: String, Codable, CaseIterable, Identifiable {
 }
 
 enum ClassDiscipline: String, Codable, CaseIterable, Identifiable {
-    case boxing, muayThai
+    case boxing, muayThai, mma
 
     var id: String { rawValue }
-    var name: String { self == .boxing ? "Box" : "Muay Thai" }
+
+    var name: String {
+        switch self {
+        case .boxing: return "Box"
+        case .muayThai: return "Muay Thai"
+        case .mma: return "MMA"
+        }
+    }
 }
 
 enum CardioModality: String, Codable, CaseIterable, Identifiable {
