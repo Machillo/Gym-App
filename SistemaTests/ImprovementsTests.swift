@@ -417,4 +417,37 @@ final class ImprovementsTests: XCTestCase {
         XCTAssertEqual(summary.volumeKg, 500)
         XCTAssertEqual(summary.classes, 1)
     }
+
+    // MARK: - Figura del cuerpo
+
+    func testBodyMapMergesMeasuresIntoTodaysEntry() {
+        game.recordBodyValue(.measure(.waist), value: 82.5)
+        clock.now = T.day(0, hour: 18)
+        game.recordBodyValue(.measure(.armRight), value: 36)
+        game.recordBodyValue(.weight, value: 180, weightUnit: .lb)
+        game.recordBodyValue(.bodyFat, value: 17)
+        let entries = game.bodyEntries()
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries[0].measures, [.waist: 82.5, .armRight: 36])
+        XCTAssertEqual(entries[0].weightKg!, WeightUnit.lb.toKg(180), accuracy: 0.001)
+        XCTAssertEqual(entries[0].weightUnit, .lb)
+        XCTAssertEqual(entries[0].bodyFatPercent, 17)
+    }
+
+    func testBodyMapOverwritesSameMeasureAndStartsNewEntryNextDay() {
+        game.recordBodyValue(.measure(.waist), value: 84)
+        game.recordBodyValue(.measure(.waist), value: 83)
+        XCTAssertEqual(game.bodyEntries().first?.measures[.waist], 83)
+        clock.now = T.day(1, hour: 9)
+        game.recordBodyValue(.measure(.waist), value: 82)
+        let entries = game.bodyEntries()
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries.map { $0.measures[.waist] }, [83, 82])
+        XCTAssertEqual(BodyTrend.make(.measure(.waist), entries: entries.map(\.snapshot))?.changeSinceFirst, -1)
+    }
+
+    func testBodyMapIgnoresLeanMass() {
+        game.recordBodyValue(.leanMass, value: 70)
+        XCTAssertTrue(game.bodyEntries().first.map { $0.weightKg == nil && $0.measures.isEmpty } ?? true)
+    }
 }
