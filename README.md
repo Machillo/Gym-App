@@ -133,6 +133,12 @@ Box, Muay Thai y MMA se registran con **Registrar clase**. Las tres cuentan para
 
 En Progreso > Cuerpo se apunta peso (kg o lb), grasa y 11 medidas en cm, con gráfico y cambio desde el primer registro. No da XP.
 
+Arriba hay una figura de frente: tocá una zona (cuello, hombros, pecho, cintura, cadera, brazos, antebrazo, muslos, pantorrilla) y anotá la medida nueva; se guarda en el registro de hoy (si no hay, se crea). Peso y grasa se anotan igual desde sus tarjetas. Las zonas pintadas ya tienen medida. La figura es de frente: tu lado derecho queda a la izquierda de la pantalla.
+
+### Diseño
+
+Fondo casi negro, tarjetas planas sin brillo y un solo acento verde lima para lo que importa (acciones, progreso, rango). Las alertas llevan una franja de color a la izquierda. Los colores y estilos de botón viven en `Sistema/Views/Components/Theme.swift`.
+
 ### Perfil
 
 Se calcula solo: el nivel sale del rango (Novato, Aprendiz, Competidor, Veterano, Élite, Maestro, Leyenda) y el estilo, de los minutos de las últimas 8 semanas entre pelea, fuerza y acondicionamiento. Cada cambio queda en **Tu evolución**.
