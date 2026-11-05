@@ -21,10 +21,10 @@ struct OnboardingView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("[ EL SISTEMA ]")
-                        .font(Theme.mono(14, weight: .bold))
-                        .tracking(4)
-                        .foregroundStyle(Theme.glow)
+                    Text("EL SISTEMA")
+                        .font(.caption.weight(.semibold))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.secondaryText)
                     switch step {
                     case 0: nameStep
                     case 1: routineStep
@@ -54,7 +54,7 @@ struct OnboardingView: View {
             } label: {
                 Text("Continuar").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.primaryAction)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             .accessibilityIdentifier("onboarding.next")
         }
@@ -90,7 +90,7 @@ struct OnboardingView: View {
                     if days.count > 1 { trainingDays = Set(ProgramSchedule.defaultWeekdays(dayCount: days.count)) }
                     step = 2
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.primaryAction)
                 .disabled(days.isEmpty || routineName.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("onboarding.routineNext")
             }
@@ -129,7 +129,7 @@ struct OnboardingView: View {
                 Button("Atrás") { step = 1 }
                 Spacer()
                 Button("Comenzar") { finish() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.primaryAction)
                     .disabled(trainingDays.isEmpty)
                     .accessibilityIdentifier("onboarding.finish")
             }

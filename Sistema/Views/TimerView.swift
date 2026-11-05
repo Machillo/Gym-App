@@ -13,10 +13,10 @@ extension WODMode {
     var tint: Color {
         switch self {
         case .amrap: return Theme.warning
-        case .forTime: return Theme.accent
+        case .forTime: return Color(red: 0.38, green: 0.64, blue: 1.0)
         case .emom: return Color(red: 0.72, green: 0.45, blue: 1.0)
         case .tabata: return Theme.success
-        case .mix: return Theme.glow
+        case .mix: return Color(red: 0.33, green: 0.85, blue: 0.80)
         case .rest: return Theme.danger
         }
     }
@@ -110,14 +110,10 @@ struct WODTimerHomeView: View {
         ScrollView {
             VStack(spacing: 14) {
                 VStack(spacing: 6) {
-                    Text("[ EL SISTEMA ]")
-                        .font(Theme.mono(12, weight: .bold))
-                        .tracking(4)
-                        .foregroundStyle(Theme.secondaryText)
-                    Text("TEMPORIZADOR")
-                        .font(Theme.mono(30, weight: .heavy))
-                        .foregroundStyle(Theme.glow)
-                        .shadow(color: Theme.glow, radius: 10)
+                    Text("Temporizador")
+                        .font(Theme.display(40, weight: .black))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.vertical, 18)
                 ForEach(WODMode.allCases) { mode in
@@ -259,8 +255,7 @@ private struct TimerConfigFields: View {
                     .frame(minWidth: 112, minHeight: 66)
                     .padding(.horizontal, 8)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.panel))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(tint, lineWidth: 1.5))
-                    .shadow(color: tint.opacity(0.45), radius: 8)
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(tint.opacity(0.6), lineWidth: 1))
                 Text(field.title)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.white)
@@ -328,9 +323,8 @@ struct WODTimerSetupView: View {
                 VStack(spacing: 18) {
                     VStack(spacing: 6) {
                         Text(config.mode.name.uppercased())
-                            .font(Theme.mono(40, weight: .heavy))
+                            .font(Theme.display(44, weight: .black))
                             .foregroundStyle(tint)
-                            .shadow(color: tint.opacity(0.8), radius: 12)
                         Text(description)
                             .font(.subheadline)
                             .multilineTextAlignment(.center)
@@ -451,8 +445,7 @@ struct WODTimerSetupView: View {
             .foregroundStyle(Theme.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(Capsule().fill(tint))
-            .shadow(color: tint.opacity(0.7), radius: 12)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(tint))
         }
         .disabled(config.mode == .mix && config.segments.isEmpty)
         .accessibilityIdentifier("timer.start")
@@ -483,9 +476,9 @@ struct WODTimerRunView: View {
             tint.opacity(finished ? 0.12 : 0.2).ignoresSafeArea()
             Theme.background.opacity(0.65).ignoresSafeArea()
             VStack(spacing: 18) {
-                Text("[ \(config.mode.name.uppercased()) ]")
-                    .font(Theme.mono(13, weight: .bold))
-                    .tracking(3)
+                Text(config.mode.name.uppercased())
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.5)
                     .foregroundStyle(Theme.secondaryText)
                 Spacer(minLength: 0)
                 dial(current, tint: tint)
@@ -512,7 +505,6 @@ struct WODTimerRunView: View {
                     .trim(from: 0, to: finished ? 1 : 1 - current.fraction)
                     .stroke(tint, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                    .shadow(color: tint, radius: 10)
             }
             VStack(spacing: 4) {
                 Text(label(current))
@@ -521,7 +513,7 @@ struct WODTimerRunView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(tint)
                 Text(TimerFormat.clock(finished ? Int(config.activeSeconds(elapsed: finalElapsed)) : current.displaySeconds))
-                    .font(.system(size: 76, weight: .black, design: .monospaced))
+                    .font(Theme.display(92, weight: .black))
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                     .foregroundStyle(.white)
@@ -584,7 +576,7 @@ struct WODTimerRunView: View {
                     } label: {
                         Text("Guardar en la sesión").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.primaryAction)
                     .accessibilityIdentifier("timer.saveResult")
                 }
                 HStack(spacing: 12) {
@@ -593,13 +585,13 @@ struct WODTimerRunView: View {
                     } label: {
                         Text("Repetir").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.secondaryAction)
                     Button {
                         dismiss()
                     } label: {
                         Text("Cerrar").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.secondaryAction)
                     .accessibilityIdentifier("timer.close")
                 }
             }
@@ -611,7 +603,7 @@ struct WODTimerRunView: View {
                 } label: {
                     Label("Terminar", systemImage: "stop.fill").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.secondaryAction)
                 .tint(Theme.danger)
                 .accessibilityIdentifier("timer.end")
                 if config.nextPhase(after: current) != nil {
@@ -620,7 +612,7 @@ struct WODTimerRunView: View {
                     } label: {
                         Image(systemName: "forward.end.fill")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.secondaryAction)
                     .accessibilityLabel("Saltar esta fase")
                 }
                 Button {
@@ -629,7 +621,7 @@ struct WODTimerRunView: View {
                     Label(clock.isRunning ? "Pausar" : "Seguir", systemImage: clock.isRunning ? "pause.fill" : "play.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.primaryAction)
                 .tint(tint)
                 .accessibilityIdentifier("timer.toggle")
             }

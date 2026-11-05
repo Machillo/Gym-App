@@ -128,7 +128,14 @@ struct ProgressScreen: View {
                     .foregroundStyle(Theme.secondaryText)
             }
             ForEach(Array(recent)) { exercise in
-                NavigationLink(exercise.name) { ExerciseDetailView(exercise: exercise) }
+                NavigationLink { ExerciseDetailView(exercise: exercise) } label: {
+                    HStack {
+                        Text(exercise.name).foregroundStyle(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(Theme.secondaryText)
+                    }
+                    .padding(.vertical, 4)
+                }
             }
             NavigationLink("Ver todos") { ExercisesView() }
                 .font(.footnote)

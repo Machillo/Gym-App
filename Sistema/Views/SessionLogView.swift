@@ -410,7 +410,7 @@ struct LastPerformanceRow: View {
                 .foregroundStyle(Theme.secondaryText)
             Spacer()
             Button("Usar", action: use)
-                .buttonStyle(.bordered)
+                .buttonStyle(.secondaryAction)
                 .controlSize(.small)
                 .accessibilityIdentifier("log.useLast")
         }

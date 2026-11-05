@@ -57,13 +57,13 @@ struct StatusView: View {
         let bar = progress.levelProgress
         let status = player.status(now: game.now)
         return VStack(alignment: .leading, spacing: 12) {
-            PanelHeader(title: "Ventana de estado", symbol: "square.grid.3x3.square")
             HStack(alignment: .center, spacing: 16) {
                 Text(position.rank.letter)
-                    .font(Theme.mono(54, weight: .black))
-                    .foregroundStyle(Theme.glow)
-                    .shadow(color: Theme.glow.opacity(0.8), radius: 12)
-                    .frame(minWidth: 70)
+                    .font(Theme.display(64, weight: .black))
+                    .foregroundStyle(Theme.onAccent)
+                    .frame(width: 76, height: 84)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent))
+                    .accessibilityLabel("Rango \(position.rank.letter)")
                 VStack(alignment: .leading, spacing: 4) {
                     Text(player.name).font(.title3.bold())
                     Text(position.title)
@@ -126,7 +126,7 @@ struct StatusView: View {
                 } label: {
                     Label("Registrar misión de castigo", systemImage: "bolt.fill").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.primaryAction)
                 .tint(Theme.danger)
             }
             .systemPanel(tint: Theme.danger)
@@ -154,7 +154,7 @@ struct StatusView: View {
                 PanelHeader(title: "Itinerario vencido", symbol: "calendar.badge.exclamationmark")
                 Text(SystemMessages.itineraryExpired).font(.subheadline)
                 NavigationLink("Cargar nuevo itinerario") { ItineraryEditorView(itinerary: nil) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.primaryAction)
             }
             .systemPanel(tint: Theme.warning)
         }
@@ -185,7 +185,7 @@ struct StatusView: View {
                     } label: {
                         Label("Registrar sesión", systemImage: "square.and.pencil").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.primaryAction)
                     .accessibilityIdentifier("status.logMission")
                 }
             } else if game.activeItinerary() != nil {
@@ -209,7 +209,7 @@ struct StatusView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.secondaryAction)
                     .accessibilityIdentifier("status.logPending")
                 }
                 Text("Registrarlo tarde suma XP y queda en tu historial, pero no borra una falta ya cobrada.")
@@ -221,14 +221,14 @@ struct StatusView: View {
             } label: {
                 Label("Registrar clase", systemImage: "figure.boxing").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.secondaryAction)
             .accessibilityIdentifier("status.logClass")
             Button {
                 logMode = .free
             } label: {
                 Label("Registrar sesión libre", systemImage: "plus.circle").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.secondaryAction)
             .accessibilityIdentifier("status.logFree")
         }
         .systemPanel()
