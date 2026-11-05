@@ -504,6 +504,34 @@ final class GameService {
         save()
     }
 
+    /// Guarda una sola medida (desde la figura del cuerpo). Si ya hay un registro de hoy, la suma ahí;
+    /// si no, crea uno nuevo. Así el historial no se llena de registros sueltos del mismo día.
+    func recordBodyValue(_ metric: BodyMetric, value: Double, weightUnit: WeightUnit = .kg) {
+        let today = SistemaCalendar.startOfDay(now)
+        let entry = bodyEntries().last { SistemaCalendar.startOfDay($0.date) == today }
+            ?? {
+                let created = BodyEntry(date: now, weightKg: nil, weightUnit: weightUnit, bodyFatPercent: nil, measures: [:], notes: "")
+                context.insert(created)
+                return created
+            }()
+        switch metric {
+        case .weight:
+            entry.weightKg = weightUnit.toKg(value)
+            entry.weightUnitRaw = weightUnit.rawValue
+        case .bodyFat:
+            entry.bodyFatPercent = value
+        case let .measure(measure):
+            var measures = entry.measures
+            measures[measure] = value
+            entry.measures = measures
+        case .leanMass:
+            return
+        }
+        try? context.save()
+        if let player = player() { refreshProfileAndChallenges(player: player) }
+        save()
+    }
+
     func deleteBodyEntry(_ entry: BodyEntry) {
         context.delete(entry)
         save()

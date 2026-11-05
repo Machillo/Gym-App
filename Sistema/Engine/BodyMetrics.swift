@@ -21,6 +21,21 @@ enum BodyMeasure: String, Codable, CaseIterable, Identifiable {
         case .calf: return "Pantorrilla"
         }
     }
+
+    /// Dónde poner la cinta, para que cada medida se compare con la anterior.
+    var tip: String {
+        switch self {
+        case .neck: return "Debajo de la manzana de Adán, cinta horizontal."
+        case .shoulders: return "Alrededor de los hombros, en la parte más ancha, brazos relajados."
+        case .chest: return "A la altura de los pezones, después de soltar el aire."
+        case .waist: return "A la altura del ombligo, abdomen relajado, sin apretar."
+        case .hips: return "En la parte más ancha de los glúteos, pies juntos."
+        case .armLeft, .armRight: return "En la parte más gruesa del bíceps, brazo relajado colgando."
+        case .forearm: return "En la parte más gruesa, justo debajo del codo."
+        case .thighLeft, .thighRight: return "Unos 15 cm arriba de la rodilla, de pie y relajado."
+        case .calf: return "En la parte más gruesa, de pie con el peso repartido."
+        }
+    }
 }
 
 /// Lo que se puede graficar del cuerpo.

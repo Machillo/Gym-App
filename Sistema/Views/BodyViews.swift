@@ -10,6 +10,7 @@ struct BodyView: View {
     @State private var editing: BodyEntry?
     @State private var adding = false
     @State private var toDelete: BodyEntry?
+    @State private var quick: BodyMetric?
 
     private var snapshots: [BodySnapshot] { entries.map(\.snapshot) }
     /// Se muestra en la unidad del último peso registrado.
@@ -23,9 +24,50 @@ struct BodyView: View {
         }
     }
 
+    private func last(_ metric: BodyMetric) -> (value: Double, date: Date)? {
+        snapshots.last { $0.value(metric) != nil }.flatMap { snapshot in snapshot.value(metric).map { ($0, snapshot.date) } }
+    }
+
+    private var selectedMeasure: BodyMeasure? {
+        if case let .measure(measure) = quick { return measure }
+        return nil
+    }
+
+    private var measured: Set<BodyMeasure> { Set(snapshots.flatMap { $0.measures.keys }) }
+
     var body: some View {
         List {
-            if !available.isEmpty {
+            Section {
+                HStack(spacing: 10) {
+                    tile(.weight)
+                    tile(.bodyFat)
+                    tile(.leanMass)
+                }
+                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 4, trailing: 12))
+                BodyMapFigure(measured: measured, selected: selectedMeasure) { measure in
+                    quick = .measure(measure)
+                }
+                .frame(height: 380)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .listRowSeparator(.hidden)
+            } header: {
+                Text("Tocá una parte para medirla")
+            } footer: {
+                Text("Cada medida se guarda en el registro de hoy. Las zonas pintadas ya tienen medida.")
+            }
+            .listRowBackground(Theme.panel)
+
+            if !measured.isEmpty {
+                Section("Medidas") {
+                    ForEach(BodyMeasure.allCases.filter(measured.contains)) { measure in
+                        measureRow(measure)
+                    }
+                }
+                .listRowBackground(Theme.panel)
+            }
+
+            if available.contains(where: { BodyTrend.make($0, entries: snapshots)?.hasHistory == true }) {
                 Section("Evolución") {
                     Picker("Métrica", selection: $metric) {
                         ForEach(available) { Text($0.name).tag($0) }
@@ -36,39 +78,17 @@ struct BodyView: View {
                     if points.count > 1 {
                         Chart(points) { point in
                             LineMark(x: .value("Fecha", point.date), y: .value(metric.name, point.value))
-                                .foregroundStyle(Theme.glow)
+                                .foregroundStyle(Theme.accent)
                             PointMark(x: .value("Fecha", point.date), y: .value(metric.name, point.value))
                                 .foregroundStyle(Theme.accent)
+                                .symbolSize(30)
                         }
                         .chartYScale(domain: .automatic(includesZero: false))
-                        .frame(height: 220)
+                        .frame(height: 200)
                     } else {
-                        Text("Con un segundo registro aparece el gráfico.").foregroundStyle(Theme.secondaryText)
+                        Text("Con un segundo registro de \(metric.name.lowercased()) aparece el gráfico.")
+                            .foregroundStyle(Theme.secondaryText)
                     }
-                }
-                .listRowBackground(Theme.panel)
-
-                Section {
-                    ForEach(available) { item in
-                        if let trend = BodyTrend.make(item, entries: snapshots) {
-                            HStack {
-                                Text(item.name)
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    Text(item.text(trend.current, weightUnit: weightUnit)).foregroundStyle(Theme.glow)
-                                    if trend.hasHistory {
-                                        Text(changeText(trend.changeSinceFirst, item))
-                                            .font(.caption)
-                                            .foregroundStyle(Theme.secondaryText)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Lo más reciente")
-                } footer: {
-                    Text("El cambio se cuenta desde tu primer registro. La masa magra se calcula con el peso y la grasa de un mismo día.")
                 }
                 .listRowBackground(Theme.panel)
             }
@@ -102,11 +122,8 @@ struct BodyView: View {
             .accessibilityLabel("Agregar registro")
             .accessibilityIdentifier("body.add")
         }
-        .overlay {
-            if entries.isEmpty {
-                ContentUnavailableView("Sin registros", systemImage: "figure.stand",
-                                       description: Text("Apuntá tu peso, grasa y medidas para ver cómo cambiás."))
-            }
+        .sheet(item: $quick) { metric in
+            BodyValueSheet(metric: metric, last: last(metric), weightUnit: weightUnit)
         }
         .sheet(isPresented: $adding) {
             NavigationStack { BodyEntryEditor(entry: nil) }
@@ -127,6 +144,62 @@ struct BodyView: View {
         .onAppear {
             if !available.contains(metric), let first = available.first { metric = first }
         }
+    }
+
+    /// Cifra grande de peso, grasa o masa magra. La masa magra se calcula: no se toca.
+    private func tile(_ item: BodyMetric) -> some View {
+        let trend = BodyTrend.make(item, entries: snapshots)
+        let editable = item != .leanMass
+        return Button {
+            quick = item
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .tracking(0.6)
+                    .foregroundStyle(Theme.secondaryText)
+                Text(trend.map { item.text($0.current, weightUnit: weightUnit) } ?? "—")
+                    .font(Theme.display(22, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(trend.flatMap { $0.hasHistory ? changeText($0.changeSinceFirst, item) : nil } ?? (editable ? "Tocá para anotar" : "Peso + grasa"))
+                    .font(.caption2)
+                    .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.raised))
+        }
+        .buttonStyle(.plain)
+        .disabled(!editable)
+        .accessibilityIdentifier("body.tile.\(item.id)")
+    }
+
+    private func measureRow(_ measure: BodyMeasure) -> some View {
+        let item = BodyMetric.measure(measure)
+        let trend = BodyTrend.make(item, entries: snapshots)
+        return Button {
+            quick = item
+        } label: {
+            HStack {
+                Text(measure.name).foregroundStyle(.white)
+                Spacer()
+                if let trend {
+                    if trend.hasHistory {
+                        Text(changeText(trend.changeSinceFirst, item))
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                    }
+                    Text(item.text(trend.current, weightUnit: weightUnit))
+                        .font(Theme.mono(16, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accent)
+            }
+        }
+        .accessibilityIdentifier("body.measure.\(measure.rawValue)")
     }
 
     private func changeText(_ change: Double, _ item: BodyMetric) -> String {
