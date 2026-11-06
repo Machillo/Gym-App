@@ -45,7 +45,7 @@ Si no tenés ese simulador, listá los disponibles con `xcrun simctl list device
 6. Elegí tu iPhone como destino y presioná **Run** (⌘R).
 7. La primera vez iOS bloquea la app: andá a **Ajustes > General > VPN y gestión de dispositivos**, tocá tu Apple ID y **Confiar**.
 
-La app no usa capacidades de cuenta paga (nada de iCloud, HealthKit, push remotas, App Groups ni widgets), así que instala igual con cualquiera de las dos cuentas.
+La única capacidad de cuenta paga es **HealthKit** (Apple Salud); no hay iCloud, push remotas, App Groups ni widgets. Con la cuenta gratuita HealthKit no firma.
 
 ## Reinstalar sin perder datos
 
@@ -134,6 +134,19 @@ Box, Muay Thai y MMA se registran con **Registrar clase**. Las tres cuentan para
 En Progreso > Cuerpo se apunta peso (kg o lb), grasa y 11 medidas en cm, con gráfico y cambio desde el primer registro. No da XP.
 
 Arriba hay una figura de frente: tocá una zona (cuello, hombros, pecho, cintura, cadera, brazos, antebrazo, muslos, pantorrilla) y anotá la medida nueva; se guarda en el registro de hoy (si no hay, se crea). Peso y grasa se anotan igual desde sus tarjetas. Las zonas pintadas ya tienen medida. La figura es de frente: tu lado derecho queda a la izquierda de la pantalla.
+
+### Medición InBody
+
+En Cuerpo, *Nueva medición* abre un paso a paso: peso, masa muscular, % de grasa, grasa visceral y puntos InBody. Cada dato se elige arrastrando una regla (vibra en cada rayita), con − / + o tocando el número para escribirlo; arranca en tu última medición y muestra el cambio contra ella (verde si va bien, rojo si no). Al final hay un resumen con la fecha y la grasa en kg y la masa magra calculadas. Si ese día ya tenías medidas de la figura, se guarda en el mismo registro.
+
+### Apple Salud
+
+Se conecta desde Estado o Ajustes > Apple Salud y se sincroniza al abrir la app.
+
+- **Del Watch al Sistema**: los entrenamientos de los últimos 7 días (desde que creaste el jugador) entran solos. Si ese día ya registraste una sesión del mismo tipo (fuerza/HIIT, cardio o pelea), se une a ella con calorías y pulso; si no, se agrega como sesión con su XP. Si después registrás esa sesión, se une a la del Watch y se cobra solo la diferencia de XP: nunca se duplica. Una sesión del Watch borrada no vuelve.
+- **Del Sistema a Salud**: solo las clases de box, muay thai y MMA (lo demás lo graba el Watch), con calorías estimadas: (MET − 1) × peso × horas, ajustado por RPE (MET: box 7,8; muay thai y MMA 9). También peso, grasa, masa magra y cintura. Corregir o borrar en el Sistema corrige o borra en Salud.
+- **Balanza**: peso y grasa de otra app entran al registro de ese día si no tenía ese dato, y no se devuelven a Salud.
+- **Estado** muestra los aros de hoy y los pasos con el promedio de 7 días. Ni calorías ni pasos dan XP.
 
 ### Diseño
 
