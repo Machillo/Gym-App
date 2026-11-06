@@ -33,23 +33,23 @@ xcodebuild -scheme Sistema -destination 'platform=iOS Simulator,name=iPhone 15' 
 
 Si no tenés ese simulador, listá los disponibles con `xcrun simctl list devices available` y cambiá el `name=`.
 
-## Instalar en tu iPhone con la cuenta gratuita (Personal Team)
+## Instalar en tu iPhone
 
 1. `xcodegen generate` y abrí `Sistema.xcodeproj`.
 2. Xcode > Settings > Accounts: agregá tu Apple ID.
 3. Seleccioná el target **Sistema** > *Signing & Capabilities*:
-   - **Team**: tu *Personal Team*.
+   - **Team**: tu equipo del Apple Developer Program (`UZ9P89YR3C`). Con la cuenta gratuita (*Personal Team*) también funciona, pero vence a los 7 días.
    - **Bundle Identifier**: debe ser único. Por defecto es `com.kennethalvarado.sistema`; si Xcode dice que no está disponible, cambialo (por ejemplo `com.tunombre.sistema.2026`). Para no repetirlo cada vez que regenerás el proyecto, editá `PRODUCT_BUNDLE_IDENTIFIER` y `DEVELOPMENT_TEAM` en `project.yml`.
 4. Conectá el iPhone por cable, desbloquealo y aceptá "Confiar en esta computadora".
 5. En el iPhone activá el **Modo de desarrollador** (Ajustes > Privacidad y seguridad > Modo de desarrollador) y reiniciá.
 6. Elegí tu iPhone como destino y presioná **Run** (⌘R).
 7. La primera vez iOS bloquea la app: andá a **Ajustes > General > VPN y gestión de dispositivos**, tocá tu Apple ID y **Confiar**.
 
-La app no usa capacidades de cuenta paga (nada de iCloud, HealthKit, push remotas, App Groups ni widgets).
+La app no usa capacidades de cuenta paga (nada de iCloud, HealthKit, push remotas, App Groups ni widgets), así que instala igual con cualquiera de las dos cuentas.
 
-## Reinstalar cada 7 días sin perder datos
+## Reinstalar sin perder datos
 
-Con el Personal Team el perfil vence a los 7 días y la app deja de abrir. Para renovarla:
+Con el Apple Developer Program el perfil de desarrollo dura 1 año (el actual vence el 6 nov 2027) y además se renueva cada vez que reinstalás desde Xcode. Con el Personal Team vence a los 7 días. Cuando vence, la app deja de abrir. Para renovarla:
 
 1. Conectá el iPhone y presioná **Run** otra vez en Xcode (mismo bundle ID y mismo team).
 2. **No desinstales la app**: instalar encima conserva la base de datos de SwiftData.
