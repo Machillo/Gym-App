@@ -11,6 +11,7 @@ struct BodyView: View {
     @State private var adding = false
     @State private var toDelete: BodyEntry?
     @State private var quick: BodyMetric?
+    @State private var measuring = false
 
     private var snapshots: [BodySnapshot] { entries.map(\.snapshot) }
     /// Se muestra en la unidad del último peso registrado.
@@ -19,7 +20,7 @@ struct BodyView: View {
 
     private func display(_ value: Double, _ metric: BodyMetric) -> Double {
         switch metric {
-        case .weight, .leanMass: return weightUnit.fromKg(value)
+        case .weight, .leanMass, .muscleMass, .fatMass: return weightUnit.fromKg(value)
         default: return value
         }
     }
@@ -38,12 +39,12 @@ struct BodyView: View {
     var body: some View {
         List {
             Section {
-                HStack(spacing: 10) {
-                    tile(.weight)
-                    tile(.bodyFat)
-                    tile(.leanMass)
-                }
-                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 4, trailing: 12))
+                inBodyCard
+                    .listRowInsets(EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14))
+            }
+            .listRowBackground(Theme.panel)
+
+            Section {
                 BodyMapFigure(measured: measured, selected: selectedMeasure) { measure in
                     quick = .measure(measure)
                 }
@@ -122,6 +123,9 @@ struct BodyView: View {
             .accessibilityLabel("Agregar registro")
             .accessibilityIdentifier("body.add")
         }
+        .fullScreenCover(isPresented: $measuring) {
+            InBodyFlowView()
+        }
         .sheet(item: $quick) { metric in
             BodyValueSheet(metric: metric, last: last(metric), weightUnit: weightUnit)
         }
@@ -146,35 +150,102 @@ struct BodyView: View {
         }
     }
 
-    /// Cifra grande de peso, grasa o masa magra. La masa magra se calcula: no se toca.
+    private var latestInBody: Date? {
+        snapshots.last { $0.weightKg != nil || $0.skeletalMuscleKg != nil || $0.inBodyScore != nil }?.date
+    }
+
+    /// Lo último de la hoja InBody, cada dato con su cambio contra la medición anterior.
+    private var inBodyCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Composición corporal").font(.title3.bold())
+                    if let latest = latestInBody {
+                        let days = SistemaCalendar.daysBetween(latest, game.now)
+                        Text("Última medición: \(latest.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "es_CR"))))"
+                             + (days > 0 ? " · hace \(Format.count(days, "día"))" : " · hoy"))
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                    } else {
+                        Text("Todavía sin mediciones").font(.caption).foregroundStyle(Theme.secondaryText)
+                    }
+                }
+                Spacer()
+            }
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10), GridItem(.flexible())],
+                      spacing: 10) {
+                ForEach(BodyMetric.inBody) { tile($0) }
+            }
+            Button {
+                measuring = true
+            } label: {
+                Label("Nueva medición", systemImage: "plus").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.primaryAction)
+            .accessibilityIdentifier("body.newMeasurement")
+        }
+    }
+
+    /// Cifra grande con su cambio. Los datos calculados (grasa en kg) no se tocan.
     private func tile(_ item: BodyMetric) -> some View {
         let trend = BodyTrend.make(item, entries: snapshots)
-        let editable = item != .leanMass
-        return Button {
-            quick = item
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.name.uppercased())
+        let editable = !item.isDerived
+        let step = InBodyField.all.first { $0.metric == item }?.step ?? 0.1
+        let card = VStack(alignment: .leading, spacing: 3) {
+                Text(shortName(item).uppercased())
                     .font(.caption2.weight(.semibold))
-                    .tracking(0.6)
+                    .tracking(0.5)
                     .foregroundStyle(Theme.secondaryText)
-                Text(trend.map { item.text($0.current, weightUnit: weightUnit) } ?? "—")
-                    .font(Theme.display(22, weight: .bold))
+                    .lineLimit(1)
+                Text(trend.map { tileValue($0.current, item) } ?? "—")
+                    .font(Theme.display(24, weight: .bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text(trend.flatMap { $0.hasHistory ? changeText($0.changeSinceFirst, item) : nil } ?? (editable ? "Tocá para anotar" : "Peso + grasa"))
-                    .font(.caption2)
-                    .foregroundStyle(Theme.secondaryText)
-                    .lineLimit(1)
+                if let trend, trend.hasHistory, abs(trend.changeSincePrevious) >= step / 2 {
+                    Text((trend.changeSincePrevious > 0 ? "▲ " : "▼ ") + tileValue(abs(trend.changeSincePrevious), item, unit: false))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(InBodyColors.change(trend.changeSincePrevious, item, step: step))
+                } else {
+                    Text(trend == nil ? (editable ? "Tocá" : "Calculado") : "Sin cambio")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.secondaryText)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.raised))
+        return Group {
+            if editable {
+                Button { quick = item } label: { card }.buttonStyle(.plain)
+            } else {
+                card.accessibilityElement(children: .combine)
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!editable)
         .accessibilityIdentifier("body.tile.\(item.id)")
+    }
+
+    private func shortName(_ item: BodyMetric) -> String {
+        switch item {
+        case .muscleMass: return "Músculo"
+        case .bodyFat: return "% Grasa"
+        case .fatMass: return "Grasa kg"
+        case .visceralFat: return "Visceral"
+        case .inBodyScore: return "Puntos"
+        default: return item.name
+        }
+    }
+
+    /// Número compacto para la tarjeta: sin repetir "kg" en cada una.
+    private func tileValue(_ value: Double, _ item: BodyMetric, unit: Bool = true) -> String {
+        switch item {
+        case .weight, .muscleMass, .fatMass, .leanMass:
+            let shown = weightUnit.fromKg(value)
+            return String(format: "%.1f", shown) + (unit ? " \(weightUnit.symbol)" : "")
+        case .bodyFat: return String(format: "%.1f", value) + (unit ? " %" : "")
+        case .visceralFat, .inBodyScore: return String(Int(value.rounded()))
+        case .measure: return String(format: "%.1f", value)
+        }
     }
 
     private func measureRow(_ measure: BodyMeasure) -> some View {
@@ -211,6 +282,8 @@ struct BodyView: View {
         var parts: [String] = []
         if let weight = entry.weightKg { parts.append(Format.weight(weight, unit: entry.weightUnit)) }
         if let fat = entry.bodyFatPercent { parts.append(BodyMetric.bodyFat.text(fat, weightUnit: .kg)) }
+        if let muscle = entry.skeletalMuscleKg { parts.append("músculo " + Format.weight(muscle, unit: entry.weightUnit)) }
+        if let score = entry.inBodyScore { parts.append("\(score) pts") }
         if !entry.measures.isEmpty { parts.append(Format.count(entry.measures.count, "medida")) }
         return parts.isEmpty ? "Sin datos" : parts.joined(separator: " · ")
     }
@@ -228,9 +301,14 @@ struct BodyEntryEditor: View {
     @State private var bodyFat: Double?
     @State private var measures: [BodyMeasure: Double] = [:]
     @State private var notes = ""
+    @State private var muscle: Double?
+    @State private var visceral: Double?
+    @State private var score: Double?
     @State private var loaded = false
 
-    private var hasData: Bool { weight != nil || bodyFat != nil || !measures.isEmpty }
+    private var hasData: Bool {
+        weight != nil || bodyFat != nil || !measures.isEmpty || muscle != nil || visceral != nil || score != nil
+    }
 
     var body: some View {
         Form {
@@ -247,6 +325,9 @@ struct BodyEntryEditor: View {
                     WeightUnitToggle(unit: $unit)
                 }
                 numberRow("Grasa corporal", unit: "%", value: $bodyFat, identifier: "body.fat")
+                numberRow("Masa muscular", unit: "kg", value: $muscle, identifier: "body.muscle")
+                numberRow("Grasa visceral", unit: "nivel", value: $visceral, identifier: "body.visceral")
+                numberRow("Puntos InBody", unit: "pts", value: $score, identifier: "body.score")
             } header: {
                 Text("General")
             } footer: {
@@ -274,7 +355,9 @@ struct BodyEntryEditor: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
                     game.saveBodyEntry(entry, date: date, weightKg: weight.map(unit.toKg), weightUnit: unit,
-                                       bodyFatPercent: bodyFat, measures: measures, notes: notes)
+                                       bodyFatPercent: bodyFat, measures: measures, notes: notes,
+                                       skeletalMuscleKg: muscle, visceralFatLevel: visceral.map { Int($0.rounded()) },
+                                       inBodyScore: score.map { Int($0.rounded()) })
                     dismiss()
                 }
                 .disabled(!hasData)
@@ -309,6 +392,9 @@ struct BodyEntryEditor: View {
             bodyFat = entry.bodyFatPercent
             measures = entry.measures
             notes = entry.notes
+            muscle = entry.skeletalMuscleKg
+            visceral = entry.visceralFatLevel.map(Double.init)
+            score = entry.inBodyScore.map(Double.init)
         }
     }
 }

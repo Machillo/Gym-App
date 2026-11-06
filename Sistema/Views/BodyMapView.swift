@@ -138,11 +138,7 @@ struct BodyValueSheet: View {
     @FocusState private var focused: Bool
 
     private var unitText: String {
-        switch metric {
-        case .weight, .leanMass: return unit.symbol
-        case .bodyFat: return "%"
-        case .measure: return "cm"
-        }
+        metric == .weight ? unit.symbol : metric.unitSymbol
     }
 
     private var tip: String? {
@@ -150,7 +146,10 @@ struct BodyValueSheet: View {
         case let .measure(measure): return measure.tip
         case .weight: return "En ayunas, después de ir al baño, siempre en la misma balanza."
         case .bodyFat: return "Con el mismo método cada vez (balanza, plicómetro o InBody)."
-        case .leanMass: return nil
+        case .muscleMass: return "En la hoja InBody: masa muscular esquelética."
+        case .visceralFat: return "En la hoja InBody: nivel de grasa visceral (de 1 a 20)."
+        case .inBodyScore: return "En la hoja InBody: los puntos, de 0 a 100."
+        case .leanMass, .fatMass: return nil
         }
     }
 
