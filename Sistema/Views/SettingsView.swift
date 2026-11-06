@@ -54,6 +54,9 @@ struct SettingsView: View {
             injurySection
                 .listRowBackground(Theme.panel)
 
+            HealthSettingsSection()
+                .listRowBackground(Theme.panel)
+
             Section("Respaldo") {
                 Button {
                     do {

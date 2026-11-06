@@ -35,6 +35,7 @@ struct StatusView: View {
                     statusWindow(player)
                     alerts(player)
                     missionCard
+                    ActivityTodayCard()
                     statsPanel(player)
                     recentLog
                 }

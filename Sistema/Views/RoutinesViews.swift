@@ -77,7 +77,8 @@ struct SessionHistoryView: View {
                     Text("\(session.date.formatted(date: .abbreviated, time: .shortened)) · \(Format.percent(session.compliance)) · RPE \(session.rpe)")
                         .font(.caption)
                         .foregroundStyle(Theme.secondaryText)
-                    Text(session.isPunishment ? "Misión de castigo" : (session.isPlanned ? "Planeada" : "No planeada"))
+                    SessionHealthLine(session: session)
+                    Text(session.isPunishment ? "Misión de castigo" : (session.isPlanned ? "Planeada" : (session.isFromWatch ? "Desde el Apple Watch" : "No planeada")))
                         .font(.caption2)
                         .foregroundStyle(session.isPunishment ? Theme.danger : Theme.accent)
                     if !session.notes.isEmpty {
