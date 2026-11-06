@@ -46,6 +46,13 @@ final class GameService {
     let context: ModelContext
     let clock: DateProvider
     let notifications: NotificationScheduling
+    let health: HealthSyncing
+    let defaults: UserDefaults
+
+    /// Aros y pasos de hoy, leídos de Salud en la última sincronización.
+    var activity: HealthActivitySnapshot?
+    var lastHealthSync: Date?
+    var isSyncingHealth = false
 
     /// Cuándo vence la instalación de la cuenta gratuita; nil en el simulador.
     var appExpiry: Date? = AppExpiry.current
@@ -53,10 +60,13 @@ final class GameService {
     /// Se incrementa en cada cambio para que las vistas que leen del servicio se refresquen.
     private(set) var revision = 0
 
-    init(context: ModelContext, clock: DateProvider, notifications: NotificationScheduling) {
+    init(context: ModelContext, clock: DateProvider, notifications: NotificationScheduling,
+         health: HealthSyncing? = nil, defaults: UserDefaults = .standard) {
         self.context = context
         self.clock = clock
         self.notifications = notifications
+        self.health = health ?? DisabledHealthService()
+        self.defaults = defaults
     }
 
     var now: Date { clock.now }
@@ -326,9 +336,13 @@ final class GameService {
 
     // MARK: - Registro de sesión
 
+    /// `absorbWatch`: si el Watch ya trajo este entrenamiento como sesión propia, se une en vez de duplicarse.
     @discardableResult
-    func logSession(_ draft: SessionDraft) -> SessionOutcome? {
+    func logSession(_ draft: SessionDraft, absorbWatch: Bool = true) -> SessionOutcome? {
         guard let player = player() else { return nil }
+        if absorbWatch, let auto = absorbableWatchSession(for: draft) {
+            return absorb(auto, into: draft, player: player)
+        }
         let compliance = ComplianceEngine.sessionCompliance(draft.results)
         let blocks = draft.results.map(\.prescribed)
         let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
@@ -363,6 +377,7 @@ final class GameService {
 
         log(.gain, SystemMessages.sessionLogged(xp: xp, compliance: compliance, capped: Double(xp) < raw.rounded()),
             xpDelta: xp, player: player, date: draft.date)
+        if session.isClass { requestHealthSync() }
 
         if draft.isPunishment {
             var ledger = player.ledger
@@ -393,6 +408,15 @@ final class GameService {
     /// Rehace la sesión con las mismas reglas de XP y topes. No cambia lo que el día ya evaluó (racha o faltas).
     func updateSession(_ session: WorkoutSession, with draft: SessionDraft) {
         guard let player = player(), canModify(session) else { return }
+        let (delta, _, events) = rewrite(session, with: draft, player: player)
+        log(.info, "Sesión corregida: \(session.title).", xpDelta: delta, player: player)
+        if session.isClass { session.healthExported = nil }
+        finishCorrection(events: events, player: player)
+        if session.isClass { requestHealthSync() }
+    }
+
+    /// Aplica un borrador sobre una sesión existente y cobra o devuelve solo la diferencia de XP.
+    private func rewrite(_ session: WorkoutSession, with draft: SessionDraft, player: Player) -> (delta: Int, raw: Double, events: [ProgressEvent]) {
         removeStats(of: session, player: player)
         deleteExerciseLogs(of: session)
 
@@ -400,11 +424,12 @@ final class GameService {
         let blocks = draft.results.map(\.prescribed)
         let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
                                           rpe: draft.rpe, compliance: compliance, startedAt: draft.date)
+        let raw = XPEngine.rawXP(input)
         let others = sessions().filter { $0.id != session.id }
         let day = SistemaCalendar.startOfDay(draft.date)
         let week = SistemaCalendar.startOfWeek(draft.date)
         let xp = XPEngine.cappedXP(
-            raw: XPEngine.rawXP(input),
+            raw: raw,
             earnedToday: others.filter { SistemaCalendar.startOfDay($0.date) == day }.reduce(0) { $0 + $1.xpAwarded },
             earnedThisWeek: others.filter { SistemaCalendar.startOfWeek($0.date) == week }.reduce(0) { $0 + $1.xpAwarded }
         )
@@ -425,8 +450,45 @@ final class GameService {
         var progress = player.progress
         let events = delta >= 0 ? progress.applyGain(delta, now: now) : progress.applyLoss(-delta, now: now)
         player.progress = progress
-        log(.info, "Sesión corregida: \(session.title).", xpDelta: delta, player: player)
+        return (delta, raw, events)
+    }
+
+    /// Sesión que el Sistema creó desde el Watch y que corresponde a lo que se está registrando:
+    /// mismo día y mismo tipo (fuerza, cardio o pelea). La más cercana en hora.
+    func absorbableWatchSession(for draft: SessionDraft) -> WorkoutSession? {
+        let group = HealthMatchGroup.of(draft.results.map(\.prescribed))
+        guard group != .none else { return nil }
+        let day = SistemaCalendar.startOfDay(draft.plannedDay ?? draft.date)
+        return sessions()
+            .filter { $0.isFromWatch && SistemaCalendar.startOfDay($0.date) == day
+                && HealthCategory(raw: $0.watchCategoryRaw ?? "").group == group }
+            .min { abs($0.date.timeIntervalSince(draft.date)) < abs($1.date.timeIntervalSince(draft.date)) }
+    }
+
+    /// Convierte la sesión del Watch en la que registraste: conserva calorías y pulso, y cobra solo la diferencia.
+    private func absorb(_ session: WorkoutSession, into draft: SessionDraft, player: Player) -> SessionOutcome {
+        var merged = draft
+        merged.date = session.date
+        let (_, raw, events) = rewrite(session, with: merged, player: player)
+        session.itineraryID = draft.itineraryID
+        session.plannedDay = draft.plannedDay.map(SistemaCalendar.startOfDay)
+        session.isPunishment = draft.isPunishment
+        session.isAutoImported = false
+        log(.gain, "Sesión registrada: \(session.title). Unida al entrenamiento del \(session.watchSource ?? "Apple Watch"), sin duplicar.",
+            xpDelta: session.xpAwarded, player: player, date: session.date)
+        if draft.isPunishment {
+            var ledger = player.ledger
+            var outcome = EvaluationOutcome()
+            PenaltyEngine.resolveMissions(ledger: &ledger, sessions: sessions().map(\.snapshot), outcome: &outcome)
+            player.ledger = ledger
+            if !outcome.completedMissions.isEmpty {
+                log(.mission, SystemMessages.missionCompleted, player: player)
+                announcements.append(Announcement(headline: "CASTIGO CUMPLIDO", message: SystemMessages.missionCompleted, positive: true))
+            }
+        }
         finishCorrection(events: events, player: player)
+        Haptics.success()
+        return SessionOutcome(session: session, xp: session.xpAwarded, rawXP: raw, events: events)
     }
 
     /// Quita la sesión y lo que dio. Si era de un día planeado que aún no cierra, ese día vuelve a estar pendiente.
@@ -438,11 +500,12 @@ final class GameService {
         let events = progress.applyLoss(session.xpAwarded, now: now)
         player.progress = progress
         log(.info, "Sesión borrada: \(session.title).", xpDelta: -session.xpAwarded, player: player)
+        forgetInHealth(session)
         context.delete(session)
         finishCorrection(events: events, player: player)
     }
 
-    private func finishCorrection(events: [ProgressEvent], player: Player) {
+    func finishCorrection(events: [ProgressEvent], player: Player) {
         announce(events, player: player)
         try? context.save()
         refreshTrials(player: player)
@@ -487,7 +550,8 @@ final class GameService {
     }
 
     func saveBodyEntry(_ entry: BodyEntry?, date: Date, weightKg: Double?, weightUnit: WeightUnit, bodyFatPercent: Double?,
-                       measures: [BodyMeasure: Double], notes: String) {
+                       measures: [BodyMeasure: Double], notes: String,
+                       skeletalMuscleKg: Double? = nil, visceralFatLevel: Int? = nil, inBodyScore: Int? = nil) {
         if let entry {
             entry.date = date
             entry.weightKg = weightKg
@@ -495,13 +559,24 @@ final class GameService {
             entry.bodyFatPercent = bodyFatPercent
             entry.measures = measures
             entry.notes = notes
+            entry.skeletalMuscleKg = skeletalMuscleKg
+            entry.visceralFatLevel = visceralFatLevel
+            entry.inBodyScore = inBodyScore
+            entry.healthSynced = false
+            if weightKg == nil { entry.weightFromHealth = nil }
+            if bodyFatPercent == nil { entry.fatFromHealth = nil }
         } else {
-            context.insert(BodyEntry(date: date, weightKg: weightKg, weightUnit: weightUnit, bodyFatPercent: bodyFatPercent,
-                                     measures: measures, notes: notes))
+            let created = BodyEntry(date: date, weightKg: weightKg, weightUnit: weightUnit, bodyFatPercent: bodyFatPercent,
+                                    measures: measures, notes: notes)
+            created.skeletalMuscleKg = skeletalMuscleKg
+            created.visceralFatLevel = visceralFatLevel
+            created.inBodyScore = inBodyScore
+            context.insert(created)
         }
         try? context.save()
         if let player = player() { refreshProfileAndChallenges(player: player) }
         save()
+        requestHealthSync()
     }
 
     /// Guarda una sola medida (desde la figura del cuerpo). Si ya hay un registro de hoy, la suma ahí;
@@ -518,21 +593,33 @@ final class GameService {
         case .weight:
             entry.weightKg = weightUnit.toKg(value)
             entry.weightUnitRaw = weightUnit.rawValue
+            entry.weightFromHealth = nil
         case .bodyFat:
             entry.bodyFatPercent = value
+            entry.fatFromHealth = nil
+        case .muscleMass:
+            entry.skeletalMuscleKg = value
+        case .visceralFat:
+            entry.visceralFatLevel = Int(value.rounded())
+        case .inBodyScore:
+            entry.inBodyScore = Int(value.rounded())
         case let .measure(measure):
             var measures = entry.measures
             measures[measure] = value
             entry.measures = measures
-        case .leanMass:
+        case .leanMass, .fatMass:
             return
         }
+        entry.healthSynced = false
         try? context.save()
         if let player = player() { refreshProfileAndChallenges(player: player) }
         save()
+        requestHealthSync()
     }
 
     func deleteBodyEntry(_ entry: BodyEntry) {
+        let id = entry.id
+        if health.isAvailable, healthConnected { Task { try? await health.deleteBody(entryID: id) } }
         context.delete(entry)
         save()
     }
@@ -554,7 +641,7 @@ final class GameService {
     }
 
     /// Anuncia los retos recién cumplidos y cuando el perfil evoluciona. No dan XP: la curva no se toca.
-    private func refreshProfileAndChallenges(player: Player) {
+    func refreshProfileAndChallenges(player: Player) {
         let input = challengeInput(player: player)
         let earned = Set(awards().map(\.key))
         let new = (ChallengeEngine.active(input) + ChallengeEngine.milestones(input))
@@ -766,7 +853,7 @@ final class GameService {
         revision += 1
     }
 
-    private func announce(_ events: [ProgressEvent], player: Player) {
+    func announce(_ events: [ProgressEvent], player: Player) {
         for event in events {
             let kind: LogKind
             switch event {
@@ -786,7 +873,7 @@ final class GameService {
         }
     }
 
-    private func log(_ kind: LogKind, _ message: String, xpDelta: Int = 0, player: Player, date: Date? = nil) {
+    func log(_ kind: LogKind, _ message: String, xpDelta: Int = 0, player: Player, date: Date? = nil) {
         context.insert(SystemLogEntry(date: date ?? now, kind: kind, message: message, xpDelta: xpDelta,
                                       totalXPAfter: player.totalXP))
     }

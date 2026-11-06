@@ -246,6 +246,22 @@ final class WorkoutSession {
     var xpAwarded: Int
     var isPunishment: Bool
 
+    // Apple Salud. Todo opcional para que la base existente migre sola.
+    /// Entrenamiento del Watch (UUID de Salud) unido a esta sesión.
+    var healthWorkoutID: String?
+    /// Categoría del entrenamiento del Watch (`HealthCategory.raw`).
+    var watchCategoryRaw: String?
+    var watchSource: String?
+    var watchKcal: Double?
+    var watchAvgHR: Double?
+    var watchMaxHR: Double?
+    /// La creó el Sistema solo, al leer un entrenamiento del Watch.
+    var isAutoImported: Bool?
+    /// Calorías estimadas que se mandaron a Salud (clases de pelea sin reloj).
+    var estimatedKcal: Double?
+    /// true: la estimación está en Salud y al día. nil: falta mandarla o rehacerla.
+    var healthExported: Bool?
+
     init(date: Date, title: String, results: [BlockResult], rpe: Int, notes: String, durationMinutes: Double,
          itineraryID: UUID?, plannedDay: Date?, routineID: UUID?, isPunishment: Bool) {
         id = UUID()
@@ -269,6 +285,9 @@ final class WorkoutSession {
     }
 
     var isPlanned: Bool { plannedDay != nil }
+
+    var isClass: Bool { results.contains { $0.prescribed.kind == .classSession } }
+    var isFromWatch: Bool { isAutoImported == true }
 
     var digest: SessionDigest {
         SessionDigest(id: id, date: date, results: results, plannedDay: plannedDay, compliance: compliance,
@@ -427,6 +446,16 @@ final class BodyEntry {
     /// [BodyMeasure: cm] en JSON.
     var measuresData: Data
     var notes: String
+    // InBody
+    var skeletalMuscleKg: Double?
+    var visceralFatLevel: Int?
+    var inBodyScore: Int?
+    // Apple Salud
+    /// true: lo que se puede mandar a Salud ya está ahí. nil/false: falta mandarlo.
+    var healthSynced: Bool?
+    /// El peso o la grasa vinieron de Salud (balanza): no se devuelven.
+    var weightFromHealth: Bool?
+    var fatFromHealth: Bool?
 
     init(date: Date, weightKg: Double?, weightUnit: WeightUnit, bodyFatPercent: Double?, measures: [BodyMeasure: Double], notes: String) {
         id = UUID()
@@ -446,7 +475,9 @@ final class BodyEntry {
     }
 
     var snapshot: BodySnapshot {
-        BodySnapshot(date: date, weightKg: weightKg, bodyFatPercent: bodyFatPercent, measures: measures)
+        BodySnapshot(date: date, weightKg: weightKg, bodyFatPercent: bodyFatPercent, measures: measures,
+                     skeletalMuscleKg: skeletalMuscleKg, visceralFatLevel: visceralFatLevel.map(Double.init),
+                     inBodyScore: inBodyScore.map(Double.init))
     }
 }
 

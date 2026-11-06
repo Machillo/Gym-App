@@ -11,7 +11,7 @@ settings:
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
-    # Poné acá el Team ID de tu Personal Team (o elegilo en Xcode > Signing & Capabilities).
+    # Team del Apple Developer Program (HealthKit necesita la cuenta paga).
     DEVELOPMENT_TEAM: UZ9P89YR3C
 targets:
   Sistema:
@@ -19,6 +19,11 @@ targets:
     platform: iOS
     sources:
       - Sistema
+    entitlements:
+      path: Sistema/Sistema.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     settings:
       base:
         # Cambialo si Xcode dice que el bundle ID ya está en uso.
@@ -31,6 +36,8 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
         INFOPLIST_KEY_UIFileSharingEnabled: YES
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "El Sistema lee tus entrenamientos del Apple Watch (calorías, pulso y duración), tus pasos, tus aros y tu peso para sumarlos a tu progreso sin duplicar sesiones."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "El Sistema guarda en Salud tus clases de box, muay thai y MMA con calorías estimadas, y tu peso, grasa, masa magra y cintura."
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

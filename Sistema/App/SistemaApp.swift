@@ -18,7 +18,10 @@ struct SistemaApp: App {
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             environment.game.evaluate()
-            if !AppEnvironment.isTesting { environment.game.runAutoBackupIfDue() }
+            if !AppEnvironment.isTesting {
+                environment.game.runAutoBackupIfDue()
+                Task { await environment.game.syncHealth() }
+            }
         }
     }
 }
@@ -49,6 +52,16 @@ struct AppEnvironment {
         guard let index = arguments.firstIndex(of: "-adoptProgram"), index + 1 < arguments.count else { return nil }
         return arguments[index + 1]
     }
+
+    /// Mediciones de `-importBodyJSON <json>`, para cargar historial InBody sin guardarlo en el repositorio.
+    nonisolated static var bodyHistoryArgument: [BodyHistoryImport]? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-importBodyJSON"), index + 1 < arguments.count,
+              let data = arguments[index + 1].data(using: .utf8) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode([BodyHistoryImport].self, from: data)
+    }
     #endif
 
     static func make() -> AppEnvironment {
@@ -59,7 +72,9 @@ struct AppEnvironment {
             fatalError("No se pudo abrir la base de datos: \(error)")
         }
         let notifications: NotificationScheduling = isTesting ? SilentNotificationService() : LocalNotificationService()
-        let game = GameService(context: container.mainContext, clock: SystemDateProvider(), notifications: notifications)
+        let health: HealthSyncing = isTesting ? DisabledHealthService() : HealthKitService()
+        let game = GameService(context: container.mainContext, clock: SystemDateProvider(), notifications: notifications,
+                               health: health)
         return AppEnvironment(container: container, game: game)
     }
 }

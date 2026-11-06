@@ -47,6 +47,9 @@ struct BackupDocument: Codable, Equatable {
         var id: UUID, date: Date, itineraryID: UUID?, plannedDay: Date?, routineID: UUID?, title: String
         var results: [BlockResult], rpe: Int, notes: String, durationMinutes: Double
         var compliance: Double, xpAwarded: Int, isPunishment: Bool
+        // Apple Salud (opcionales: los respaldos viejos no los traen).
+        var healthWorkoutID: String?, watchCategoryRaw: String?, watchSource: String?
+        var watchKcal: Double?, watchAvgHR: Double?, watchMaxHR: Double?, isAutoImported: Bool?, estimatedKcal: Double?
     }
 
     struct ExerciseLogDTO: Codable, Equatable {
@@ -69,6 +72,8 @@ struct BackupDocument: Codable, Equatable {
     struct BodyDTO: Codable, Equatable {
         var id: UUID, date: Date, weightKg: Double?, weightUnitRaw: String?, bodyFatPercent: Double?
         var measures: [BodyMeasure: Double], notes: String
+        var skeletalMuscleKg: Double?, visceralFatLevel: Int?, inBodyScore: Int?
+        var weightFromHealth: Bool?, fatFromHealth: Bool?
     }
 
     struct AwardDTO: Codable, Equatable {
@@ -114,7 +119,10 @@ enum BackupService {
         let sessions: [D.SessionDTO] = try context.fetch(FetchDescriptor<WorkoutSession>()).map { s in
             D.SessionDTO(id: s.id, date: s.date, itineraryID: s.itineraryID, plannedDay: s.plannedDay, routineID: s.routineID,
                          title: s.title, results: s.results, rpe: s.rpe, notes: s.notes, durationMinutes: s.durationMinutes,
-                         compliance: s.compliance, xpAwarded: s.xpAwarded, isPunishment: s.isPunishment)
+                         compliance: s.compliance, xpAwarded: s.xpAwarded, isPunishment: s.isPunishment,
+                         healthWorkoutID: s.healthWorkoutID, watchCategoryRaw: s.watchCategoryRaw, watchSource: s.watchSource,
+                         watchKcal: s.watchKcal, watchAvgHR: s.watchAvgHR, watchMaxHR: s.watchMaxHR,
+                         isAutoImported: s.isAutoImported, estimatedKcal: s.estimatedKcal)
         }
         let logsByExercise: [D.ExerciseLogDTO] = try context.fetch(FetchDescriptor<ExerciseLog>()).map { l in
             D.ExerciseLogDTO(id: l.id, exerciseID: l.exerciseID, markKey: l.markKey, sessionID: l.sessionID, date: l.date,
@@ -134,7 +142,9 @@ enum BackupService {
         }
         let bodyEntries: [D.BodyDTO] = try context.fetch(FetchDescriptor<BodyEntry>()).map { b in
             D.BodyDTO(id: b.id, date: b.date, weightKg: b.weightKg, weightUnitRaw: b.weightUnitRaw,
-                      bodyFatPercent: b.bodyFatPercent, measures: b.measures, notes: b.notes)
+                      bodyFatPercent: b.bodyFatPercent, measures: b.measures, notes: b.notes,
+                      skeletalMuscleKg: b.skeletalMuscleKg, visceralFatLevel: b.visceralFatLevel, inBodyScore: b.inBodyScore,
+                      weightFromHealth: b.weightFromHealth, fatFromHealth: b.fatFromHealth)
         }
         let awards: [D.AwardDTO] = try context.fetch(FetchDescriptor<ChallengeAward>()).map { a in
             D.AwardDTO(key: a.key, title: a.title, detail: a.detail, date: a.date)
@@ -231,6 +241,14 @@ enum BackupService {
             session.plannedDay = s.plannedDay
             session.compliance = s.compliance
             session.xpAwarded = s.xpAwarded
+            session.healthWorkoutID = s.healthWorkoutID
+            session.watchCategoryRaw = s.watchCategoryRaw
+            session.watchSource = s.watchSource
+            session.watchKcal = s.watchKcal
+            session.watchAvgHR = s.watchAvgHR
+            session.watchMaxHR = s.watchMaxHR
+            session.isAutoImported = s.isAutoImported
+            session.estimatedKcal = s.estimatedKcal
             context.insert(session)
         }
         for l in doc.exerciseLogs {
@@ -267,6 +285,11 @@ enum BackupService {
                                   measures: b.measures, notes: b.notes)
             entry.id = b.id
             entry.weightUnitRaw = b.weightUnitRaw
+            entry.skeletalMuscleKg = b.skeletalMuscleKg
+            entry.visceralFatLevel = b.visceralFatLevel
+            entry.inBodyScore = b.inBodyScore
+            entry.weightFromHealth = b.weightFromHealth
+            entry.fatFromHealth = b.fatFromHealth
             context.insert(entry)
         }
         for a in doc.awards ?? [] {

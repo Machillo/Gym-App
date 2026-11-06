@@ -20,11 +20,13 @@ struct RootView: View {
             #if DEBUG
             if let xp = AppEnvironment.priorHistoryXPArgument { game.applyPriorHistory(xp: xp) }
             if let program = AppEnvironment.adoptProgramArgument { game.adoptProgram(named: program) }
+            if let history = AppEnvironment.bodyHistoryArgument { game.importBodyHistory(history) }
             #endif
             game.evaluate()
             if !AppEnvironment.isTesting {
                 game.notifications.requestAuthorization()
                 game.runAutoBackupIfDue()
+                await game.syncHealth()
             }
         }
     }
