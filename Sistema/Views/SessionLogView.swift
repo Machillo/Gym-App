@@ -20,6 +20,8 @@ struct SessionLogView: View {
     @State private var loaded = false
     @State private var lastPerformances = LastPerformanceIndex()
     @State private var timer: TimerRequest?
+    @State private var bodyWeight: Double?
+    @State private var bodyWeightUnit: WeightUnit = .kg
 
     var body: some View {
         Form {
@@ -87,6 +89,26 @@ struct SessionLogView: View {
                 Text("Esfuerzo")
             } footer: {
                 Text(isClassLog ? "El XP depende de lo que duró la clase." : "La duración viene estimada y el XP depende de ella: poné lo que realmente duraste.")
+            }
+
+            if !isEditing {
+                Section {
+                    HStack {
+                        Text("Peso al terminar")
+                        Spacer()
+                        TextField(lastWeightText ?? "—", value: $bodyWeight, format: .number.precision(.fractionLength(0...1)))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 80)
+                            .accessibilityIdentifier("log.bodyWeight")
+                        WeightUnitToggle(unit: $bodyWeightUnit)
+                    }
+                } header: {
+                    Text("Peso corporal")
+                } footer: {
+                    Text(lastWeightText.map { "Último: \($0) \(bodyWeightUnit.symbol). Opcional: si lo llenás, queda como tu peso de hoy." }
+                         ?? "Opcional: si lo llenás, queda como tu peso de hoy.")
+                }
             }
 
             Section("Vista previa del Sistema") {
@@ -187,6 +209,7 @@ struct SessionLogView: View {
     private func setup() {
         guard !loaded else { return }
         loaded = true
+        bodyWeightUnit = game.bodyEntries().last(where: { $0.weightKg != nil })?.weightUnit ?? .kg
         if case let .edit(session) = mode {
             lastPerformances = game.lastPerformances(excluding: session.id)
             title = session.title
@@ -239,6 +262,21 @@ struct SessionLogView: View {
         results.append(BlockResult.asPrescribed(block))
     }
 
+    private var isEditing: Bool {
+        if case .edit = mode { return true }
+        return false
+    }
+
+    private var lastWeightText: String? {
+        guard let kg = game.bodyEntries().last(where: { $0.weightKg != nil })?.weightKg else { return nil }
+        return String(format: "%.1f", bodyWeightUnit.fromKg(kg))
+    }
+
+    private func saveBodyWeight() {
+        guard let bodyWeight, bodyWeight > 0 else { return }
+        game.recordBodyValue(.weight, value: bodyWeight, weightUnit: bodyWeightUnit)
+    }
+
     private func previewXP(compliance: Double) -> Double {
         XPEngine.rawXP(.init(dominantKind: XPEngine.dominantKind(results.map(\.prescribed)),
                              minutes: isClassLog ? (results.first?.minutes ?? duration) : duration,
@@ -278,6 +316,7 @@ struct SessionLogView: View {
             return
         }
         game.logSession(draft)
+        saveBodyWeight()
         dismiss()
     }
 }

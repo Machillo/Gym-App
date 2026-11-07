@@ -4,11 +4,18 @@ import SwiftUI
 @MainActor
 struct TrainingHubView: View {
     @Environment(GameService.self) private var game
+    @Query(sort: \BodyEntry.date) private var bodyEntries: [BodyEntry]
     @State private var logFree = false
     @State private var logClass = false
+    @State private var updatingWeight = false
 
     var body: some View {
         List {
+            Section {
+                BodyWeightCard(entries: bodyEntries) { updatingWeight = true }
+                    .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
+            }
+            .listRowBackground(Theme.panel)
             Section {
                 NavigationLink { WODTimerHomeView() } label: {
                     Label("Temporizador", systemImage: "timer")
@@ -53,6 +60,89 @@ struct TrainingHubView: View {
         .sheet(isPresented: $logClass) {
             NavigationStack { SessionLogView(mode: .classLog) }
         }
+        .sheet(isPresented: $updatingWeight) {
+            let weighed = bodyEntries.filter { $0.weightKg != nil }
+            BodyValueSheet(metric: .weight, last: weighed.last.flatMap { e in e.weightKg.map { ($0, e.date) } },
+                           weightUnit: weighed.last?.weightUnit ?? .kg)
+        }
+    }
+}
+
+/// Peso corporal a la vista en Entrenar: el último, cuándo fue, cuánto cambió y la tendencia reciente.
+struct BodyWeightCard: View {
+    let entries: [BodyEntry]
+    var onUpdate: () -> Void
+
+    private var weighed: [BodyEntry] { entries.filter { $0.weightKg != nil } }
+    private var unit: WeightUnit { weighed.last?.weightUnit ?? .kg }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PESO CORPORAL")
+                        .font(.caption.weight(.semibold))
+                        .tracking(0.8)
+                        .foregroundStyle(Theme.secondaryText)
+                    if let last = weighed.last, let kg = last.weightKg {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(String(format: "%.1f", unit.fromKg(kg)))
+                                .font(Theme.display(44, weight: .black))
+                                .accessibilityIdentifier("hub.weight")
+                            Text(unit.symbol).font(.title3.weight(.semibold)).foregroundStyle(Theme.secondaryText)
+                        }
+                        Text(detail(last: last, kg: kg))
+                            .font(.caption)
+                            .foregroundStyle(Theme.secondaryText)
+                    } else {
+                        Text("Sin registrar").font(Theme.display(32, weight: .bold))
+                    }
+                }
+                Spacer()
+                sparkline
+                    .frame(width: 110, height: 52)
+                    .padding(.top, 18)
+            }
+            Button(action: onUpdate) {
+                Label("Actualizar peso", systemImage: "scalemass").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.secondaryAction)
+            .accessibilityIdentifier("hub.updateWeight")
+        }
+    }
+
+    private func detail(last: BodyEntry, kg: Double) -> String {
+        let days = SistemaCalendar.daysBetween(last.date, Date())
+        var text = days == 0 ? "Hoy" : (days == 1 ? "Ayer" : "Hace \(days) días")
+        if weighed.count > 1, let previous = weighed[weighed.count - 2].weightKg {
+            let change = unit.fromKg(kg) - unit.fromKg(previous)
+            if abs(change) >= 0.05 {
+                text += " · " + (change > 0 ? "+" : "−") + String(format: "%.1f %@", abs(change), unit.symbol) + " vs anterior"
+            } else {
+                text += " · igual que la anterior"
+            }
+        }
+        return text
+    }
+
+    /// Últimos pesos como una línea simple; el punto final marca el actual.
+    private var sparkline: some View {
+        let values = weighed.suffix(10).compactMap(\.weightKg)
+        return GeometryReader { geo in
+            if values.count > 1, let low = values.min(), let high = values.max() {
+                let span = max(high - low, 0.5)
+                let points = values.enumerated().map { index, value in
+                    CGPoint(x: geo.size.width * CGFloat(index) / CGFloat(values.count - 1),
+                            y: geo.size.height * (1 - CGFloat((value - low) / span)) * 0.85 + geo.size.height * 0.075)
+                }
+                Path { path in path.addLines(points) }
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                if let end = points.last {
+                    Circle().fill(Theme.accent).frame(width: 7, height: 7).position(end)
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
