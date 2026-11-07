@@ -135,6 +135,10 @@ En Progreso > Cuerpo se apunta peso (kg o lb), grasa y 11 medidas en cm, con gr�
 
 Arriba hay una figura de frente: tocá una zona (cuello, hombros, pecho, cintura, cadera, brazos, antebrazo, muslos, pantorrilla) y anotá la medida nueva; se guarda en el registro de hoy (si no hay, se crea). Peso y grasa se anotan igual desde sus tarjetas. Las zonas pintadas ya tienen medida. La figura es de frente: tu lado derecho queda a la izquierda de la pantalla.
 
+### Peso en Entrenar
+
+Arriba de Entrenar está el peso corporal: el último, hace cuánto, el cambio contra el anterior y la tendencia de los últimos 10. *Actualizar peso* lo anota al toque. Al registrar una sesión (no al corregirla) hay un campo opcional *Peso al terminar*; si lo llenás, queda como tu peso de hoy.
+
 ### Medición InBody
 
 En Cuerpo, *Nueva medición* abre un paso a paso: peso, masa muscular, % de grasa, grasa visceral y puntos InBody. Cada dato se elige arrastrando una regla (vibra en cada rayita), con − / + o tocando el número para escribirlo; arranca en tu última medición y muestra el cambio contra ella (verde si va bien, rojo si no). Al final hay un resumen con la fecha y la grasa en kg y la masa magra calculadas. Si ese día ya tenías medidas de la figura, se guarda en el mismo registro.
