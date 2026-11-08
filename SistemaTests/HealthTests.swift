@@ -9,6 +9,7 @@ final class FakeHealth: HealthSyncing {
     var workoutsToReturn: [HealthWorkout] = []
     var samplesToReturn: [HealthBodySample] = []
     var activityToReturn: HealthActivitySnapshot?
+    var recoveryToReturn: [HealthRecoveryDay] = []
     var savedWorkouts: [HealthWorkoutExport] = []
     var deletedWorkouts: [String] = []
     var savedBody: [UUID: [HealthBodyExport]] = [:]
@@ -18,6 +19,7 @@ final class FakeHealth: HealthSyncing {
     func workouts(since: Date) async throws -> [HealthWorkout] { workoutsToReturn.filter { $0.start >= since } }
     func bodySamples(since: Date) async throws -> [HealthBodySample] { samplesToReturn }
     func activity(on day: Date) async throws -> HealthActivitySnapshot? { activityToReturn }
+    func recoveryDays(since: Date) async throws -> [HealthRecoveryDay] { recoveryToReturn }
     func replaceWorkout(_ workout: HealthWorkoutExport) async throws { savedWorkouts.append(workout) }
     func deleteWorkout(syncID: String) async throws { deletedWorkouts.append(syncID) }
     func replaceBody(_ samples: [HealthBodyExport], entryID: UUID) async throws { savedBody[entryID] = samples }
