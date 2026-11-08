@@ -34,6 +34,7 @@ struct StatusView: View {
                 if let player = players.first {
                     statusWindow(player)
                     alerts(player)
+                    HunterStateCard()
                     missionCard
                     ActivityTodayCard()
                     statsPanel(player)

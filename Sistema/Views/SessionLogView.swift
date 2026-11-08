@@ -280,7 +280,7 @@ struct SessionLogView: View {
     private func previewXP(compliance: Double) -> Double {
         XPEngine.rawXP(.init(dominantKind: XPEngine.dominantKind(results.map(\.prescribed)),
                              minutes: isClassLog ? (results.first?.minutes ?? duration) : duration,
-                             rpe: rpe, compliance: compliance, startedAt: date))
+                             rpe: rpe, compliance: compliance, startedAt: date)) * game.recoveryXPMultiplier(date)
     }
 
     private func save() {
