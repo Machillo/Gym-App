@@ -9,6 +9,7 @@ protocol HealthSyncing: AnyObject {
     func workouts(since: Date) async throws -> [HealthWorkout]
     func bodySamples(since: Date) async throws -> [HealthBodySample]
     func activity(on day: Date) async throws -> HealthActivitySnapshot?
+    func recoveryDays(since: Date) async throws -> [HealthRecoveryDay]
     /// Borra la versión anterior (mismo `syncID`) y guarda la nueva.
     func replaceWorkout(_ workout: HealthWorkoutExport) async throws
     func deleteWorkout(syncID: String) async throws
@@ -24,6 +25,7 @@ final class DisabledHealthService: HealthSyncing {
     func workouts(since: Date) async throws -> [HealthWorkout] { [] }
     func bodySamples(since: Date) async throws -> [HealthBodySample] { [] }
     func activity(on day: Date) async throws -> HealthActivitySnapshot? { nil }
+    func recoveryDays(since: Date) async throws -> [HealthRecoveryDay] { [] }
     func replaceWorkout(_ workout: HealthWorkoutExport) async throws {}
     func deleteWorkout(syncID: String) async throws {}
     func replaceBody(_ samples: [HealthBodyExport], entryID: UUID) async throws {}
@@ -61,7 +63,8 @@ final class HealthKitService: HealthSyncing {
         var share: Set<HKSampleType> = [HKObjectType.workoutType(), Self.energy]
         share.formUnion(HealthBodyKind.allCases.map(Self.bodyType))
         var read: Set<HKObjectType> = [HKObjectType.workoutType(), Self.energy, Self.heartRate, Self.steps,
-                                       HKObjectType.activitySummaryType(),
+                                       HKObjectType.activitySummaryType(), HKCategoryType(.sleepAnalysis),
+                                       HKQuantityType(.restingHeartRate), HKQuantityType(.heartRateVariabilitySDNN),
                                        HKQuantityType(.distanceWalkingRunning), HKQuantityType(.distanceCycling),
                                        HKQuantityType(.distanceSwimming)]
         read.formUnion(HealthBodyKind.allCases.map(Self.bodyType))
@@ -177,6 +180,35 @@ final class HealthKitService: HealthSyncing {
             standGoal: summary?.appleStandHoursGoal.doubleValue(for: .count()) ?? 0,
             hasRings: summary != nil
         )
+    }
+
+    func recoveryDays(since: Date) async throws -> [HealthRecoveryDay] {
+        let first = SistemaCalendar.startOfDay(since)
+        let predicate = HKQuery.predicateForSamples(withStart: first.addingTimeInterval(-86_400), end: nil)
+        let asleep = HKCategoryValueSleepAnalysis.allAsleepValues.map(\.rawValue)
+        let sleep = try await HKSampleQueryDescriptor(predicates: [.categorySample(type: HKCategoryType(.sleepAnalysis), predicate: predicate)],
+                                                      sortDescriptors: [SortDescriptor(\.startDate)]).result(for: store)
+        let intervals = sleep.filter { asleep.contains($0.value) }.map { DateInterval(start: $0.startDate, end: max($0.startDate, $0.endDate)) }
+        let perMinute = HKUnit.count().unitDivided(by: .minute())
+        let heart = try await dailyAverage(.restingHeartRate, unit: perMinute, predicate: predicate)
+        let hrv = try await dailyAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), predicate: predicate)
+
+        var days: [HealthRecoveryDay] = []
+        var day = first
+        let today = SistemaCalendar.startOfDay(Date())
+        while day <= today {
+            days.append(HealthRecoveryDay(day: day, sleepHours: RecoveryEngine.sleepHours(intervals: intervals, day: day),
+                                          restingHR: heart[day], hrv: hrv[day]))
+            day = SistemaCalendar.addDays(1, to: day)
+        }
+        return days
+    }
+
+    private func dailyAverage(_ identifier: HKQuantityTypeIdentifier, unit: HKUnit, predicate: NSPredicate) async throws -> [Date: Double] {
+        let samples = try await HKSampleQueryDescriptor(predicates: [.quantitySample(type: HKQuantityType(identifier), predicate: predicate)],
+                                                        sortDescriptors: [SortDescriptor(\.startDate)]).result(for: store)
+        return Dictionary(grouping: samples) { SistemaCalendar.startOfDay($0.startDate) }
+            .mapValues { group in group.reduce(0) { $0 + $1.quantity.doubleValue(for: unit) } / Double(group.count) }
     }
 
     private func rings(on day: Date) async throws -> HKActivitySummary? {

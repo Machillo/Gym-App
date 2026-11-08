@@ -19,6 +19,7 @@ struct BackupDocument: Codable, Equatable {
     // Opcionales: los respaldos anteriores no los traen.
     var bodyEntries: [BodyDTO]?
     var awards: [AwardDTO]?
+    var recovery: [RecoveryDTO]?
 
     struct PlayerDTO: Codable, Equatable {
         var id: UUID, name: String, createdAt: Date, totalXP: Int, overflowXP: Int
@@ -28,6 +29,12 @@ struct BackupDocument: Codable, Equatable {
         var lastCalculatedAt: Date, reminderHour: Int, reminderMinute: Int
         var priorHistoryXP: Int?
         var profileTitle: String?
+        var wakeHour: Int?, wakeMinute: Int?, fightDate: Date?
+    }
+
+    struct RecoveryDTO: Codable, Equatable {
+        var day: Date, sleepHours: Double?, sleepFromHealth: Bool?, restingHR: Double?, hrv: Double?
+        var sleepQuality: Int?, soreness: Int?, stress: Int?, energy: Int?, missionXP: Int?
     }
 
     struct ItineraryDTO: Codable, Equatable {
@@ -101,7 +108,7 @@ enum BackupService {
                         strength: p.strength, endurance: p.endurance, technique: p.technique, discipline: p.discipline,
                         vitality: p.vitality, ledger: p.ledger, injuries: p.injuries, lastCalculatedAt: p.lastCalculatedAt,
                         reminderHour: p.reminderHour, reminderMinute: p.reminderMinute, priorHistoryXP: p.priorHistoryXP,
-                        profileTitle: p.profileTitle)
+                        profileTitle: p.profileTitle, wakeHour: p.wakeHour, wakeMinute: p.wakeMinute, fightDate: p.fightDate)
         }
         let itineraries: [D.ItineraryDTO] = try context.fetch(FetchDescriptor<Itinerary>()).map { i in
             D.ItineraryDTO(id: i.id, name: i.name, startDate: i.startDate, endDate: i.endDate, isActive: i.isActive,
@@ -150,6 +157,11 @@ enum BackupService {
             D.AwardDTO(key: a.key, title: a.title, detail: a.detail, date: a.date)
         }
 
+        let recovery: [D.RecoveryDTO] = try context.fetch(FetchDescriptor<DailyRecovery>()).map { r in
+            D.RecoveryDTO(day: r.day, sleepHours: r.sleepHours, sleepFromHealth: r.sleepFromHealth, restingHR: r.restingHR, hrv: r.hrv,
+                          sleepQuality: r.sleepQuality, soreness: r.soreness, stress: r.stress, energy: r.energy, missionXP: r.missionXP)
+        }
+
         return BackupDocument(
             version: BackupDocument.currentVersion,
             exportedAt: now,
@@ -163,7 +175,8 @@ enum BackupService {
             trials: trials.sorted { $0.id.uuidString < $1.id.uuidString },
             logs: logs.sorted { $0.id.uuidString < $1.id.uuidString },
             bodyEntries: bodyEntries.sorted { $0.id.uuidString < $1.id.uuidString },
-            awards: awards.sorted { $0.key < $1.key }
+            awards: awards.sorted { $0.key < $1.key },
+            recovery: recovery.sorted { $0.day < $1.day }
         )
     }
 
@@ -208,6 +221,9 @@ enum BackupService {
             player.reminderMinute = p.reminderMinute
             player.priorHistoryXP = p.priorHistoryXP
             player.profileTitle = p.profileTitle
+            player.wakeHour = p.wakeHour
+            player.wakeMinute = p.wakeMinute
+            player.fightDate = p.fightDate
             context.insert(player)
         }
         for i in doc.itineraries {
@@ -292,6 +308,19 @@ enum BackupService {
             entry.fatFromHealth = b.fatFromHealth
             context.insert(entry)
         }
+        for r in doc.recovery ?? [] {
+            let record = DailyRecovery(day: r.day)
+            record.sleepHours = r.sleepHours
+            record.sleepFromHealth = r.sleepFromHealth
+            record.restingHR = r.restingHR
+            record.hrv = r.hrv
+            record.sleepQuality = r.sleepQuality
+            record.soreness = r.soreness
+            record.stress = r.stress
+            record.energy = r.energy
+            record.missionXP = r.missionXP
+            context.insert(record)
+        }
         for a in doc.awards ?? [] {
             context.insert(ChallengeAward(key: a.key, title: a.title, detail: a.detail, date: a.date))
         }
@@ -303,6 +332,7 @@ enum BackupService {
         func wipe<T: PersistentModel>(_ type: T.Type) {
             for object in (try? context.fetch(FetchDescriptor<T>())) ?? [] { context.delete(object) }
         }
+        wipe(DailyRecovery.self)
         wipe(ChallengeAward.self)
         wipe(BodyEntry.self)
         wipe(SystemLogEntry.self)

@@ -347,13 +347,9 @@ final class GameService {
         let blocks = draft.results.map(\.prescribed)
         let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
                                           rpe: draft.rpe, compliance: compliance, startedAt: draft.date)
-        let raw = XPEngine.rawXP(input)
+        let raw = XPEngine.rawXP(input) * recoveryXPMultiplier(draft.date)
         let existing = sessions()
-        let day = SistemaCalendar.startOfDay(draft.date)
-        let week = SistemaCalendar.startOfWeek(draft.date)
-        let earnedToday = existing.filter { SistemaCalendar.startOfDay($0.date) == day }.reduce(0) { $0 + $1.xpAwarded }
-        let earnedWeek = existing.filter { SistemaCalendar.startOfWeek($0.date) == week }.reduce(0) { $0 + $1.xpAwarded }
-        let xp = XPEngine.cappedXP(raw: raw, earnedToday: earnedToday, earnedThisWeek: earnedWeek)
+        let xp = XPEngine.cappedXP(raw: raw, earnedToday: xpEarned(day: draft.date), earnedThisWeek: xpEarned(week: draft.date))
 
         let session = WorkoutSession(date: draft.date, title: draft.title, results: draft.results, rpe: draft.rpe,
                                      notes: draft.notes, durationMinutes: draft.durationMinutes,
@@ -424,15 +420,9 @@ final class GameService {
         let blocks = draft.results.map(\.prescribed)
         let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
                                           rpe: draft.rpe, compliance: compliance, startedAt: draft.date)
-        let raw = XPEngine.rawXP(input)
-        let others = sessions().filter { $0.id != session.id }
-        let day = SistemaCalendar.startOfDay(draft.date)
-        let week = SistemaCalendar.startOfWeek(draft.date)
-        let xp = XPEngine.cappedXP(
-            raw: raw,
-            earnedToday: others.filter { SistemaCalendar.startOfDay($0.date) == day }.reduce(0) { $0 + $1.xpAwarded },
-            earnedThisWeek: others.filter { SistemaCalendar.startOfWeek($0.date) == week }.reduce(0) { $0 + $1.xpAwarded }
-        )
+        let raw = XPEngine.rawXP(input) * recoveryXPMultiplier(draft.date)
+        let xp = XPEngine.cappedXP(raw: raw, earnedToday: xpEarned(day: draft.date, excluding: session.id),
+                                   earnedThisWeek: xpEarned(week: draft.date, excluding: session.id))
         let delta = xp - session.xpAwarded
 
         session.date = draft.date
@@ -825,7 +815,7 @@ final class GameService {
     }
 
     func rescheduleNotifications() {
-        let expiryNotices = AppExpiry.notices(expiry: appExpiry, now: now)
+        let expiryNotices = AppExpiry.notices(expiry: appExpiry, now: now) + bedtimeNotices()
         guard let player = player(), let itinerary = activeItinerary() else {
             notifications.replaceAll(with: expiryNotices)
             return

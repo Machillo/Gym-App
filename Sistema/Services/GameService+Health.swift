@@ -43,6 +43,7 @@ extension GameService {
         do {
             try await health.requestAuthorization()
             healthConnected = true
+            markHealthAuthorizationCurrent()
             if let player = player() { log(.info, "Conectado con Apple Salud.", player: player) }
             save()
             await syncHealth()
@@ -69,6 +70,9 @@ extension GameService {
         }
         if let samples = try? await health.bodySamples(since: SistemaCalendar.addDays(-Self.healthBodyLookbackDays, to: now)) {
             importBodySamples(samples)
+        }
+        if let days = try? await health.recoveryDays(since: SistemaCalendar.addDays(-(RecoveryEngine.baselineDays + 7), to: now)) {
+            importRecoveryDays(days)
         }
         activity = try? await health.activity(on: now)
         lastHealthSync = now

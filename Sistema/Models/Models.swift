@@ -50,6 +50,11 @@ final class Player {
     var priorHistoryXP: Int?
     /// Último perfil anunciado ("Peleador de MMA · Competidor"), para detectar cuando evoluciona.
     var profileTitle: String?
+    /// Hora real de levantarse, para calcular a qué hora acostarse.
+    var wakeHour: Int?
+    var wakeMinute: Int?
+    /// Fecha de la próxima pelea o campeonato.
+    var fightDate: Date?
 
     init(name: String, now: Date) {
         id = UUID()
@@ -481,6 +486,43 @@ final class BodyEntry {
     }
 }
 
+/// Sueño, pulso, HRV y cómo amaneciste en un día. Se queda en el teléfono.
+@Model
+final class DailyRecovery {
+    @Attribute(.unique) var day: Date
+    var sleepHours: Double?
+    var sleepFromHealth: Bool?
+    var restingHR: Double?
+    var hrv: Double?
+    var sleepQuality: Int?
+    var soreness: Int?
+    var stress: Int?
+    var energy: Int?
+    /// XP de la misión de descanso de esa noche; nil si todavía no se evaluó.
+    var missionXP: Int?
+
+    init(day: Date) {
+        self.day = SistemaCalendar.startOfDay(day)
+    }
+
+    var checkIn: RecoveryCheckIn? {
+        get {
+            guard let sleepQuality, let soreness, let stress, let energy else { return nil }
+            return RecoveryCheckIn(sleepQuality: sleepQuality, soreness: soreness, stress: stress, energy: energy)
+        }
+        set {
+            sleepQuality = newValue?.sleepQuality
+            soreness = newValue?.soreness
+            stress = newValue?.stress
+            energy = newValue?.energy
+        }
+    }
+
+    var snapshot: RecoveryDay {
+        RecoveryDay(day: day, sleepHours: sleepHours, restingHR: restingHR, hrv: hrv, checkIn: checkIn)
+    }
+}
+
 /// Reto o logro ya ganado. Queda aunque después se edite el historial.
 @Model
 final class ChallengeAward {
@@ -501,7 +543,7 @@ enum SistemaSchema {
     static let models: [any PersistentModel.Type] = [
         Player.self, Itinerary.self, Routine.self, Exercise.self, WorkoutSession.self,
         ExerciseLog.self, PenaltyEvent.self, AscensionTrial.self, SystemLogEntry.self,
-        BodyEntry.self, ChallengeAward.self,
+        BodyEntry.self, ChallengeAward.self, DailyRecovery.self,
     ]
 
     static func makeContainer(inMemory: Bool) throws -> ModelContainer {
