@@ -135,6 +135,19 @@ En Progreso > Cuerpo se apunta peso (kg o lb), grasa y 11 medidas en cm, con gr�
 
 Arriba hay una figura de frente: tocá una zona (cuello, hombros, pecho, cintura, cadera, brazos, antebrazo, muslos, pantorrilla) y anotá la medida nueva; se guarda en el registro de hoy (si no hay, se crea). Peso y grasa se anotan igual desde sus tarjetas. Las zonas pintadas ya tienen medida. La figura es de frente: tu lado derecho queda a la izquierda de la pantalla.
 
+### Estado del cazador (sueño y recuperación)
+
+En Estado hay un puntaje de 0 a 100 con recomendación: **Listo** (70 o más), **Moderado** (45–69) o **Recuperar** (menos de 45). Sale de las horas de sueño, el check-in de la mañana (cómo dormiste, dolor, estrés, energía), HRV y pulso en reposo comparados con tus últimos 28 días (desde 7 días con datos) y la carga reciente (minutos × RPE de pesas, cardio y sparring). Es una recomendación: no cambia rutinas ni faltas.
+
+- **Buff**: dormir 7 horas o más da +5 % de XP a las sesiones de ese día.
+- **Misión de recuperación**: esas 7 horas dan 20 XP, una vez por noche y dentro de los topes diario y semanal.
+- **Debuff**: 5 horas o más de deuda en 7 noches se muestra y adelanta la hora de acostarse; no quita XP.
+- **Logros**: rachas de 7, 14 y 30 noches.
+- **Hora de acostarte**: iOS no deja leer la alarma, así que la hora de levantarse se define en Recuperación; avisa 30 minutos antes.
+- **Modo pelea**: con la fecha cargada hay cuenta regresiva y, en las últimas 3 semanas, la meta sube a 8 horas y Listo pide 75.
+
+Estos datos se quedan en el iPhone (y en tus respaldos JSON).
+
 ### Peso en Entrenar
 
 Arriba de Entrenar está el peso corporal: el último, hace cuánto, el cambio contra el anterior y la tendencia de los últimos 10. *Actualizar peso* lo anota al toque. Al registrar una sesión (no al corregirla) hay un campo opcional *Peso al terminar*; si lo llenás, queda como tu peso de hoy.
