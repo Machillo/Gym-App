@@ -44,6 +44,41 @@ final class PendingDaysTests: XCTestCase {
         XCTAssertEqual(game.routines().count, ProgramFixture.days.count)
     }
 
+    func testAdoptProgramAfterExpiredItineraryStartsToday() throws {
+        let old = game.saveRoutine(nil, name: "Rutina A", blocks: ProgramFixture.days[0].blocks)
+        let first = game.createItinerary(name: "Itinerario 1", start: clock.now, end: T.day(6), plan: everyDayPlan(old))
+        game.logSession(draft(old, day: SistemaCalendar.startOfDay(T.day(0)), itinerary: first))
+        game.saveProgram(name: ProgramFixture.name, changeDate: nil, days: ProgramFixture.days)
+        clock.now = T.day(8, hour: 9)
+
+        game.adoptProgram(named: ProgramFixture.name)
+
+        let active = try XCTUnwrap(game.activeItinerary())
+        XCTAssertEqual(active.startDate, SistemaCalendar.startOfDay(T.day(8)))
+        XCTAssertEqual(first.endDate, SistemaCalendar.startOfDay(T.day(6)), "El vencido no se estira ni se recorta")
+    }
+
+    func testImportProgramFromJSON() throws {
+        let json = """
+        {"name":"PED-Test","days":[
+          {"name":"Día 1 - Fuerza","blocks":[
+            {"strength":{"exercise":"Back squat","sets":4,"reps":5}},
+            {"circuit":{"title":"HIIT","rounds":10,"exercises":[{"name":"Air bike","seconds":20,"rest":40}]}}]},
+          {"name":"Día 2 - Cardio","blocks":[{"cardio":{"modality":"run","minutes":45}}]}]}
+        """
+        let program = try JSONDecoder().decode(ProgramImport.self, from: Data(json.utf8))
+
+        XCTAssertTrue(game.importProgram(program))
+        XCTAssertFalse(game.importProgram(program), "Con el mismo nombre no se repite")
+
+        let routines = game.routines().filter { $0.programName == "PED-Test" }.sorted { ($0.programDay ?? 0) < ($1.programDay ?? 0) }
+        XCTAssertEqual(routines.map(\.name), ["Día 1 - Fuerza", "Día 2 - Cardio"])
+        XCTAssertEqual(routines[0].blocks[0].strength.sets, 4)
+        XCTAssertEqual(routines[0].blocks[1].circuit.exercises.first?.restSeconds, 40)
+        XCTAssertEqual(routines[1].blocks[0].cardio.minutes, 45)
+        XCTAssertEqual(game.activeItinerary()?.name, "PED-Test")
+    }
+
     func testAdoptProgramTwiceChangesNothing() throws {
         game.saveProgram(name: ProgramFixture.name, changeDate: T.day(7), days: ProgramFixture.days)
         game.adoptProgram(named: ProgramFixture.name)
