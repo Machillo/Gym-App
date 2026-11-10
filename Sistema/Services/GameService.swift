@@ -280,7 +280,9 @@ final class GameService {
         let days = routines().filter { $0.programName == name }.sorted { ($0.programDay ?? 0) < ($1.programDay ?? 0) }
         let current = activeItinerary()
         guard !days.isEmpty, current?.name != name else { return }
-        let start = current?.startDate ?? SistemaCalendar.startOfDay(now)
+        // Si el actual ya venció, el nuevo empieza hoy: no se cobran días que no eran suyos.
+        let today = SistemaCalendar.startOfDay(now)
+        let start = current.map { $0.endDate < today ? today : $0.startDate } ?? today
         let end = days.first?.programChangeDate ?? SistemaCalendar.addDays(56, to: start)
         let replaced = routines().filter { routine in
             routine.programName != name && current?.plan.contains { $0.routineID == routine.id } == true

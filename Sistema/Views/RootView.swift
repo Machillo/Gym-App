@@ -21,6 +21,7 @@ struct RootView: View {
             if let xp = AppEnvironment.priorHistoryXPArgument { game.applyPriorHistory(xp: xp) }
             if let program = AppEnvironment.adoptProgramArgument { game.adoptProgram(named: program) }
             if let history = AppEnvironment.bodyHistoryArgument { game.importBodyHistory(history) }
+            if let program = AppEnvironment.programImportArgument { game.importProgram(program) }
             #endif
             game.evaluate()
             if !AppEnvironment.isTesting {

@@ -62,6 +62,16 @@ struct AppEnvironment {
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode([BodyHistoryImport].self, from: data)
     }
+
+    /// Programa de `-importProgramJSON <json>`: guarda sus rutinas y lo deja como itinerario activo.
+    nonisolated static var programImportArgument: ProgramImport? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-importProgramJSON"), index + 1 < arguments.count,
+              let data = arguments[index + 1].data(using: .utf8) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(ProgramImport.self, from: data)
+    }
     #endif
 
     static func make() -> AppEnvironment {
