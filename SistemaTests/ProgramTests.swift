@@ -22,7 +22,7 @@ final class ProgramTests: XCTestCase {
         XCTAssertEqual(WeightUnit.kg.toKg(25), 25)
         XCTAssertEqual(Format.weight(WeightUnit.lb.toKg(25), unit: .lb), "25 lb")
         XCTAssertEqual(Format.weight(WeightUnit.lb.toKg(12.5), unit: .lb), "12.5 lb")
-        XCTAssertEqual(Format.weightBoth(WeightUnit.lb.toKg(25)), "11.3 kg · 25 lb")
+        XCTAssertEqual(Format.weightBoth(WeightUnit.lb.toKg(25)), "25 lb · 11.3 kg")
     }
 
     func testImprovementComparesRealWeightAcrossUnits() {
