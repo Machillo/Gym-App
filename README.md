@@ -79,18 +79,19 @@ El ejercicio y su medida pueden ir en una o dos líneas. Después de la medida v
 
 *Usar en un itinerario* precarga el plan semanal, con la fecha de cambio como fin. El itinerario sigue las reglas de siempre: al vencer tenés 48 h de gracia para cargar el siguiente.
 
-### Peso en kg o lb
+### Peso en lb o kg
 
-Cada campo de peso tiene su botón kg/lb. Internamente todo se guarda en kg, así las marcas y el e1RM comparan el peso real sin importar la unidad en que lo escribiste. Cambiar el botón convierte lo que se ve (25 kg → 55.12 lb), no el peso.
+Las pesas se ven en **libras** salvo que elijas otra cosa: cada campo de peso tiene su botón lb/kg. Internamente todo se guarda en kg, así las marcas y el e1RM comparan el peso real sin importar la unidad en que lo escribiste. Cambiar el botón convierte lo que se ve (25 kg → 55.12 lb), no el peso.
 
 ## Cómo funciona
 
 ### Cumplimiento
 - **Fuerza**: reps hechas / (series × reps prescritas).
-- **Circuito, bi-serie y tabata**: (rondas hechas / rondas prescritas) × promedio por ejercicio de reps o tiempo real / prescrito.
+- **Circuito, bi-serie y tabata**: se anota ronda por ronda (R1, R2…: reps o segundos y peso de cada una). Por ejercicio se suma lo de las rondas hechas contra lo prescrito en todas, así una ronda floja se compensa con otra mejor; en "máximo de reps" cuenta cada ronda en la que hiciste algo. El historial guarda el promedio de reps y el peso más alto. (Sesiones viejas sin rondas: rondas hechas / prescritas × promedio por ejercicio.)
 - **AMRAP**: tiempo real / tiempo prescrito. Las rondas completadas se guardan como resultado, no como meta.
 - **Cardio**: distancia real / prescrita (o tiempo si no hay distancia).
-- **Clase**: duración real / prescrita.
+- **Clase y sparring**: duración real / prescrita.
+- **Pelea**: cumplida al registrarla.
 - Cada bloque topa en 100 % (lo real se guarda igual para el historial). La sesión es el promedio ponderado por los minutos estimados de cada bloque.
 - Más peso que lo prescrito con las mismas reps queda marcado como **mejora** en el historial del ejercicio.
 
@@ -125,9 +126,13 @@ Al registrar, cada ejercicio muestra el peso más alto de la última vez que lo 
 
 En Entrenar > Historial de sesiones, tocar una sesión la edita y deslizarla la borra. El XP y los atributos se recalculan con las mismas reglas y topes. No cambia lo que un día ya cerrado dejó (faltas, racha o pruebas superadas). Las sesiones de castigo no se pueden corregir.
 
-### Clases
+### Clases, sparring y peleas
 
-Box, Muay Thai y MMA se registran con **Registrar clase**. Las tres cuentan para las pruebas de ascenso.
+Box, Muay Thai y MMA se registran con **Clase, sparring o pelea**, eligiendo el tipo arriba. Las tres disciplinas cuentan para las pruebas de ascenso.
+
+- **Clase**: duración.
+- **Sparring**: asaltos y minutos por asalto (la duración sale sola: asaltos × minutos + 1 min de descanso entre asaltos). Da 25 % más XP que una clase, dentro de los topes.
+- **Pelea**: resultado (gané, perdí, empate), cómo terminó (KO, TKO, sumisión, decisión), asaltos, rival y evento. Además del XP de la sesión trae un premio que no cuenta para los topes: +300 por pelear, +300 si ganás y +100 más si ganás antes de tiempo (hasta +700). Borrar o corregir la pelea quita o ajusta el premio.
 
 ### Cuerpo
 
@@ -220,6 +225,8 @@ Todas viven en `Sistema/Engine/Progression.swift` y se replican en `scripts/cali
 | Factor de intensidad | 1 + 0.05 × (RPE − 7), entre 0.85 y 1.15 |
 | Bonus madrugada | +10 % antes de las 6:00 |
 | Topes | 200 XP/día · 700 XP/semana |
+| Sparring | ×1.25 sobre el XP de la sesión (antes de topes) |
+| Premio de pelea | +300 pelear · +300 ganar · +100 terminar antes (fuera de los topes) |
 | Falta completa | −100 XP |
 | Media falta | −50 % del XP de la sesión (cumplimiento < 50 %) |
 | Bajada de nivel | cada 3 faltas en una semana calendario |
