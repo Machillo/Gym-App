@@ -61,6 +61,8 @@ enum WeightUnit: String, Codable, CaseIterable, Identifiable {
     case kg, lb
 
     static let kgPerPound = 0.45359237
+    /// Unidad de las pesas cuando no se eligió otra: se entrena en libras.
+    static let preferred: WeightUnit = .lb
 
     var id: String { rawValue }
     var symbol: String { rawValue }
@@ -119,7 +121,7 @@ struct CircuitExercise: Codable, Hashable, Identifiable {
         var parts: [String] = []
         if let seconds { parts.append(Format.seconds(seconds)) }
         if let reps { parts.append("\(reps) reps") }
-        if let weight, weight > 0 { parts.append(Format.weight(weight, unit: unit ?? .kg)) }
+        if let weight, weight > 0 { parts.append(Format.weight(weight, unit: unit ?? .preferred)) }
         if let note, !note.isEmpty { parts.append(note) }
         if let restSeconds, restSeconds > 0 { parts.append("desc. \(Format.seconds(restSeconds))") }
         return parts.joined(separator: " · ")
@@ -144,9 +146,79 @@ struct CardioPrescription: Codable, Hashable {
     var minutes: Double?
 }
 
+/// Qué fue el bloque de pelea: clase, sparring o pelea de verdad.
+enum CombatKind: String, Codable, CaseIterable, Identifiable {
+    case lesson, sparring, fight
+
+    var id: String { rawValue }
+
+    var name: String {
+        switch self {
+        case .lesson: return "Clase"
+        case .sparring: return "Sparring"
+        case .fight: return "Pelea"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .lesson: return "figure.boxing"
+        case .sparring: return "figure.martial.arts"
+        case .fight: return "trophy.fill"
+        }
+    }
+}
+
+enum FightOutcome: String, Codable, CaseIterable, Identifiable {
+    case win, loss, draw
+
+    var id: String { rawValue }
+
+    var name: String {
+        switch self {
+        case .win: return "Gané"
+        case .loss: return "Perdí"
+        case .draw: return "Empate"
+        }
+    }
+}
+
+enum FightMethod: String, Codable, CaseIterable, Identifiable {
+    case ko, tko, submission, decision
+
+    var id: String { rawValue }
+
+    var name: String {
+        switch self {
+        case .ko: return "KO"
+        case .tko: return "TKO"
+        case .submission: return "Sumisión"
+        case .decision: return "Decisión"
+        }
+    }
+
+    /// Terminó antes de tiempo.
+    var isFinish: Bool { self != .decision }
+}
+
+/// Cómo terminó una pelea.
+struct FightResult: Codable, Hashable {
+    var outcome: FightOutcome = .win
+    var method: FightMethod = .decision
+    var opponent: String?
+    var event: String?
+}
+
 struct ClassPrescription: Codable, Hashable {
     var discipline: ClassDiscipline = .boxing
     var minutes: Double = 60
+    /// Sin valor es una clase (lo que había antes de sparring y peleas).
+    var combat: CombatKind?
+    /// Sparring y pelea: asaltos y minutos por asalto.
+    var rounds: Int?
+    var roundMinutes: Double?
+
+    var combatKind: CombatKind { combat ?? .lesson }
 }
 
 /// Bloque de una rutina. Solo el payload que corresponde a `kind` es significativo.
@@ -205,7 +277,7 @@ struct RoutineBlock: Codable, Hashable, Identifiable {
     var summary: String {
         switch kind {
         case .strength:
-            let w = strength.weight > 0 ? " @ \(Format.weight(strength.weight))" : ""
+            let w = strength.weight > 0 ? " @ \(Format.weight(strength.weight, unit: strength.unit ?? .preferred))" : ""
             let name = strength.exerciseName.isEmpty ? "Sin nombre" : strength.exerciseName
             return "\(name) \(strength.sets)×\(strength.reps)\(w)"
         case .circuit:
@@ -228,7 +300,13 @@ struct RoutineBlock: Codable, Hashable, Identifiable {
             if let m = cardio.minutes { parts.append(Format.minutes(m)) }
             return parts.joined(separator: " · ")
         case .classSession:
-            return "Clase de \(klass.discipline.name) · \(Format.minutes(klass.minutes))"
+            switch klass.combatKind {
+            case .lesson:
+                return "Clase de \(klass.discipline.name) · \(Format.minutes(klass.minutes))"
+            case .sparring, .fight:
+                let rounds = klass.rounds.map { " · \(Format.count($0, "asalto"))" } ?? ""
+                return "\(klass.combatKind.name) de \(klass.discipline.name)\(rounds)"
+            }
         }
     }
 }
@@ -240,7 +318,7 @@ struct PerformedSet: Codable, Hashable, Identifiable {
     var unit: WeightUnit?
 }
 
-/// Lo real de un ejercicio de circuito (por ronda, en promedio).
+/// Lo real de un ejercicio de circuito: en una ronda, o el resumen de todas.
 struct PerformedCircuitExercise: Codable, Hashable {
     var reps: Int?
     var seconds: Int?
@@ -257,6 +335,10 @@ struct BlockResult: Codable, Hashable, Identifiable {
     var circuitActuals: [PerformedCircuitExercise] = []
     var distanceKm: Double?
     var minutes: Double?
+    /// Circuito ronda por ronda: [ronda][ejercicio]. Sin valor, solo hay el resumen de `circuitActuals`.
+    var roundActuals: [[PerformedCircuitExercise]]?
+    /// Solo en peleas.
+    var fight: FightResult?
 
     init(prescribed: RoutineBlock) {
         self.prescribed = prescribed
@@ -273,21 +355,50 @@ struct BlockResult: Codable, Hashable, Identifiable {
             }
         case .circuit:
             // En un AMRAP las rondas son el resultado, no la meta: lo prescrito es el tiempo.
+            r.circuitActuals = block.circuit.exercises.map {
+                PerformedCircuitExercise(reps: $0.reps, seconds: $0.seconds, weight: $0.weight, unit: $0.unit)
+            }
             if block.circuit.isAMRAP {
                 r.minutes = block.circuit.timeCapMinutes
             } else {
                 r.rounds = block.circuit.rounds
-            }
-            r.circuitActuals = block.circuit.exercises.map {
-                PerformedCircuitExercise(reps: $0.reps, seconds: $0.seconds, weight: $0.weight, unit: $0.unit)
+                r.roundActuals = Array(repeating: r.circuitActuals, count: max(block.circuit.rounds, 0))
             }
         case .cardio:
             r.distanceKm = block.cardio.distanceKm
             r.minutes = block.cardio.minutes
         case .classSession:
             r.minutes = block.klass.minutes
+            r.rounds = block.klass.rounds ?? 0
+            if block.klass.combatKind == .fight { r.fight = FightResult() }
         }
         return r
+    }
+
+    /// Pone tantas rondas como `rounds`, copiando la última (o lo prescrito) al agregar.
+    mutating func resizeRounds() {
+        guard prescribed.kind == .circuit, !prescribed.circuit.isAMRAP else { return }
+        var list = roundActuals ?? Array(repeating: circuitActuals, count: rounds)
+        let template = list.last ?? circuitActuals
+        while list.count < rounds { list.append(template) }
+        if list.count > rounds { list.removeLast(list.count - rounds) }
+        roundActuals = list
+        syncFromRounds()
+    }
+
+    /// El resumen por ejercicio sale de las rondas: promedio de reps y segundos, el peso más alto.
+    mutating func syncFromRounds() {
+        guard let rounds = roundActuals, !rounds.isEmpty else { return }
+        circuitActuals = prescribed.circuit.exercises.indices.map { index in
+            let column = rounds.compactMap { index < $0.count ? $0[index] : nil }
+            func average(_ values: [Int]) -> Int? {
+                values.isEmpty ? nil : Int((Double(values.reduce(0, +)) / Double(column.count)).rounded())
+            }
+            let weights = column.compactMap(\.weight)
+            let heaviest = column.filter { $0.weight != nil }.max { ($0.weight ?? 0) < ($1.weight ?? 0) }
+            return PerformedCircuitExercise(reps: average(column.compactMap(\.reps)), seconds: average(column.compactMap(\.seconds)),
+                                            weight: weights.max(), unit: heaviest?.unit)
+        }
     }
 
     /// Mejora: más peso que lo prescrito con al menos las mismas reps.
@@ -311,7 +422,7 @@ enum Format {
     /// Para marcas e historial, que mezclan pesas en ambas unidades.
     static func weightBoth(_ kg: Double) -> String {
         guard kg > 0 else { return weight(kg) }
-        return "\(weight(kg, unit: .kg)) · \(weight(kg, unit: .lb))"
+        return "\(weight(kg, unit: .lb)) · \(weight(kg, unit: .kg))"
     }
 
     static func count(_ n: Int, _ singular: String) -> String {

@@ -24,7 +24,7 @@ struct TrainingHubView: View {
                 Button {
                     logClass = true
                 } label: {
-                    Label("Registrar clase", systemImage: "figure.boxing")
+                    Label("Clase, sparring o pelea", systemImage: "figure.boxing")
                 }
             }
             .listRowBackground(Theme.panel)
@@ -168,6 +168,11 @@ struct SessionHistoryView: View {
                         .font(.caption)
                         .foregroundStyle(Theme.secondaryText)
                     SessionHealthLine(session: session)
+                    if let fight = session.fight {
+                        Label(fightLine(fight), systemImage: "trophy.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(fight.outcome == .win ? Theme.accent : Theme.secondaryText)
+                    }
                     Text(session.isPunishment ? "Misión de castigo" : (session.isPlanned ? "Planeada" : (session.isFromWatch ? "Desde el Apple Watch" : "No planeada")))
                         .font(.caption2)
                         .foregroundStyle(session.isPunishment ? Theme.danger : Theme.accent)
@@ -202,6 +207,13 @@ struct SessionHistoryView: View {
         } message: {
             Text("Se le resta el XP y los atributos que dio. Una falta o racha de un día ya cerrado no cambia.")
         }
+    }
+
+    private func fightLine(_ fight: FightResult) -> String {
+        var text = fight.outcome == .draw ? "Empate" : "\(fight.outcome == .win ? "Victoria" : "Derrota") por \(fight.method.name)"
+        if let opponent = fight.opponent { text += " vs \(opponent)" }
+        if let event = fight.event { text += " · \(event)" }
+        return text
     }
 }
 
@@ -425,7 +437,7 @@ struct BlockEditorView: View {
                 Section("Prescripción") {
                     Stepper("Series: \(block.strength.sets)", value: $block.strength.sets, in: 1...20)
                     Stepper("Reps: \(block.strength.reps)", value: $block.strength.reps, in: 1...100)
-                    WeightField(label: "Peso", kg: $block.strength.weight, unit: $block.strength.unit.orKg)
+                    WeightField(label: "Peso", kg: $block.strength.weight, unit: $block.strength.unit.orPreferred)
                 }
 
             case .circuit:
@@ -467,7 +479,7 @@ struct BlockEditorView: View {
                         } else {
                             IntField(label: "Reps", value: $exercise.reps.orZero)
                         }
-                        WeightField(label: "Peso opcional", kg: $exercise.weight.orZero, unit: $exercise.unit.orKg)
+                        WeightField(label: "Peso opcional", kg: $exercise.weight.orZero, unit: $exercise.unit.orPreferred)
                         IntField(label: "Descanso opcional (s)", value: $exercise.restSeconds.orZero)
                         TextField("Nota opcional (ej. c/l)", text: $exercise.note.orEmpty)
                         Button("Quitar ejercicio", role: .destructive) {

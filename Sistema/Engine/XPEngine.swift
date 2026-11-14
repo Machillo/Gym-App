@@ -42,6 +42,25 @@ enum XPEngine {
         return max(0, min(wanted, dayRoom, weekRoom))
     }
 
+    /// Multiplicador por sparring: se aplica antes de los topes.
+    static func combatMultiplier(_ blocks: [RoutineBlock]) -> Double {
+        blocks.contains { $0.kind == .classSession && $0.klass.combatKind == .sparring } ? Progression.sparringXPMultiplier : 1
+    }
+
+    /// Premio por pelear, ganar y terminar antes de tiempo. Va aparte de los topes: una pelea no es sobreentrenamiento.
+    static func fightBonus(_ results: [BlockResult]) -> Int {
+        results.reduce(0) { total, result in
+            guard result.prescribed.kind == .classSession, result.prescribed.klass.combatKind == .fight,
+                  let fight = result.fight else { return total }
+            var xp = Progression.fightXP
+            if fight.outcome == .win {
+                xp += Progression.fightWinXP
+                if fight.method.isFinish { xp += Progression.fightFinishXP }
+            }
+            return total + xp
+        }
+    }
+
     /// Tipo de bloque con más minutos estimados.
     static func dominantKind(_ blocks: [RoutineBlock]) -> BlockKind {
         var totals: [BlockKind: Double] = [:]

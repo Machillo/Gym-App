@@ -293,6 +293,9 @@ final class WorkoutSession {
 
     var isClass: Bool { results.contains { $0.prescribed.kind == .classSession } }
     var isFromWatch: Bool { isAutoImported == true }
+    /// XP sujeto a topes: todo menos el premio de pelea.
+    var cappedXP: Int { xpAwarded - XPEngine.fightBonus(results) }
+    var fight: FightResult? { results.lazy.compactMap(\.fight).first }
 
     var digest: SessionDigest {
         SessionDigest(id: id, date: date, results: results, plannedDay: plannedDay, compliance: compliance,

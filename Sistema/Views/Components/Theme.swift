@@ -167,10 +167,10 @@ extension Binding where Value == Int? {
 }
 
 extension Binding where Value == WeightUnit? {
-    /// Sin unidad guardada, el peso está en kg.
-    var orKg: Binding<WeightUnit> {
+    /// Sin unidad elegida, la pesa se ve en la unidad preferida (libras).
+    var orPreferred: Binding<WeightUnit> {
         Binding<WeightUnit>(
-            get: { wrappedValue ?? .kg },
+            get: { wrappedValue ?? .preferred },
             set: { wrappedValue = $0 }
         )
     }

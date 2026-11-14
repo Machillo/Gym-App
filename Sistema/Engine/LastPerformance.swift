@@ -46,7 +46,7 @@ struct LastPerformanceIndex: Equatable {
                 switch block.kind {
                 case .strength:
                     for set in result.sets where set.weight > 0 {
-                        let found = LastPerformance(weightKg: set.weight, unit: set.unit ?? block.strength.unit ?? .kg,
+                        let found = LastPerformance(weightKg: set.weight, unit: set.unit ?? block.strength.unit ?? .preferred,
                                                     reps: set.reps, date: session.date)
                         Self.keep(found, id: block.strength.exerciseID, name: block.strength.exerciseName, in: &best)
                     }
@@ -54,7 +54,7 @@ struct LastPerformanceIndex: Equatable {
                     for (index, exercise) in block.circuit.exercises.enumerated() where index < result.circuitActuals.count {
                         let actual = result.circuitActuals[index]
                         guard let weight = actual.weight, weight > 0 else { continue }
-                        let found = LastPerformance(weightKg: weight, unit: actual.unit ?? exercise.unit ?? .kg,
+                        let found = LastPerformance(weightKg: weight, unit: actual.unit ?? exercise.unit ?? .preferred,
                                                     reps: actual.reps ?? 0, date: session.date)
                         Self.keep(found, id: exercise.exerciseID, name: exercise.exerciseName, in: &best)
                     }

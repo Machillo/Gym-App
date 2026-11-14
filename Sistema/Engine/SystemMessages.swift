@@ -43,6 +43,11 @@ enum SystemMessages {
         return text
     }
 
+    static func fight(_ fight: FightResult, bonus: Int) -> String {
+        let how = fight.outcome == .win ? "Victoria por \(fight.method.name)" : fight.outcome == .draw ? "Empate" : "Derrota por \(fight.method.name)"
+        return "\(how). Subirse a pelear vale: +\(bonus) XP de premio, aparte de los topes."
+    }
+
     static let missionAssigned = "Entraste en Zona de penalización. Misión de castigo asignada: tenés 48 horas."
     static let missionCompleted = "Misión de castigo cumplida. Saliste de la Zona de penalización."
     static let trialPassed = "Prueba de ascenso superada. El siguiente rango te espera."

@@ -88,7 +88,7 @@ struct SessionLogView: View {
             } header: {
                 Text("Esfuerzo")
             } footer: {
-                Text(isClassLog ? "El XP depende de lo que duró la clase." : "La duración viene estimada y el XP depende de ella: poné lo que realmente duraste.")
+                Text(isClassLog ? "El XP depende de lo que duró. El sparring vale 25 % más y una pelea trae su premio aparte." : "La duración viene estimada y el XP depende de ella: poné lo que realmente duraste.")
             }
 
             if !isEditing {
@@ -202,7 +202,7 @@ struct SessionLogView: View {
         case .free: return "Sesión libre"
         case .punishment: return PunishmentMission.title
         case .edit: return "Editar sesión"
-        case .classLog: return "Registrar clase"
+        case .classLog: return "Registrar combate"
         }
     }
 
@@ -281,12 +281,14 @@ struct SessionLogView: View {
         XPEngine.rawXP(.init(dominantKind: XPEngine.dominantKind(results.map(\.prescribed)),
                              minutes: isClassLog ? (results.first?.minutes ?? duration) : duration,
                              rpe: rpe, compliance: compliance, startedAt: date)) * game.recoveryXPMultiplier(date)
+            * XPEngine.combatMultiplier(results.map(\.prescribed)) + Double(XPEngine.fightBonus(results))
     }
 
     private func save() {
         var finalResults = results
         if isClassLog, let klass = results.first {
-            title = klass.prescribed.klass.discipline.name
+            let p = klass.prescribed.klass
+            title = p.combatKind == .lesson ? p.discipline.name : "\(p.combatKind.name) de \(p.discipline.name)"
             duration = klass.minutes ?? duration
         }
         var isUnplanned = isClassLog
@@ -358,11 +360,11 @@ struct BlockResultEditor: View {
                         .multilineTextAlignment(.trailing)
                         .frame(width: 50)
                     Text("×")
-                    TextField("0", value: $set.weight.inUnit(set.unit ?? .kg), format: .number)
+                    TextField("0", value: $set.weight.inUnit(set.unit ?? .preferred), format: .number)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 64)
-                    WeightUnitToggle(unit: $set.unit.orKg)
+                    WeightUnitToggle(unit: $set.unit.orPreferred)
                 }
             }
             HStack {
@@ -391,32 +393,29 @@ struct BlockResultEditor: View {
                 Stepper("Rondas completadas: \(result.rounds)", value: $result.rounds, in: 0...99)
             } else {
                 Stepper("Rondas: \(result.rounds) / \(result.prescribed.circuit.rounds)", value: $result.rounds, in: 0...99)
+                    .onChange(of: result.rounds) { result.resizeRounds() }
+                    .onAppear { if result.roundActuals == nil { result.resizeRounds() } }
             }
-            ForEach(Array(result.prescribed.circuit.exercises.enumerated()), id: \.element.id) { index, exercise in
-                if index < result.circuitActuals.count {
-                    VStack(alignment: .leading, spacing: 4) {
-                        if exercise.exerciseName.isEmpty || exercise.exerciseID == nil {
-                            TextField("Ejercicio", text: $result.prescribed.circuit.exercises[index].exerciseName)
-                                .font(.subheadline.bold())
-                        } else {
-                            Text(exercise.exerciseName).font(.subheadline.bold())
+            if result.prescribed.circuit.isAMRAP {
+                ForEach(Array(result.prescribed.circuit.exercises.enumerated()), id: \.element.id) { index, exercise in
+                    if index < result.circuitActuals.count {
+                        VStack(alignment: .leading, spacing: 4) {
+                            exerciseHeader(index: index, exercise: exercise)
+                            amountField(exercise, value: $result.circuitActuals[index])
+                            WeightField(label: "Peso", kg: $result.circuitActuals[index].weight.orZero,
+                                        unit: $result.circuitActuals[index].unit.orPreferred)
                         }
-                        Text(exercise.prescriptionText)
-                            .font(.caption)
-                            .foregroundStyle(Theme.secondaryText)
-                        if exercise.seconds != nil {
-                            IntField(label: "Segundos (presc. \(exercise.seconds ?? 0))", value: $result.circuitActuals[index].seconds.orZero)
-                        } else {
-                            IntField(label: "Reps (presc. \(exercise.reps ?? 0))", value: $result.circuitActuals[index].reps.orZero)
-                        }
-                        if let previous = last.find(id: exercise.exerciseID, name: exercise.exerciseName) {
-                            LastPerformanceRow(previous: previous) {
-                                result.circuitActuals[index].weight = previous.weightKg
-                                result.circuitActuals[index].unit = previous.unit
+                    }
+                }
+            } else {
+                ForEach(Array(result.prescribed.circuit.exercises.enumerated()), id: \.element.id) { index, exercise in
+                    VStack(alignment: .leading, spacing: 6) {
+                        exerciseHeader(index: index, exercise: exercise)
+                        ForEach(0..<(result.roundActuals?.count ?? 0), id: \.self) { round in
+                            if index < (result.roundActuals?[round].count ?? 0) {
+                                RoundRow(round: round + 1, exercise: exercise, actual: roundBinding(round, index))
                             }
                         }
-                        WeightField(label: "Peso", kg: $result.circuitActuals[index].weight.orZero,
-                                    unit: $result.circuitActuals[index].unit.orKg)
                     }
                 }
             }
@@ -428,13 +427,225 @@ struct BlockResultEditor: View {
             NumberField(label: "Tiempo (min)", value: $result.minutes.orZero)
 
         case .classSession:
-            Picker("Disciplina", selection: $result.prescribed.klass.discipline) {
-                ForEach(ClassDiscipline.allCases) { Text($0.name).tag($0) }
-            }
-            .accessibilityIdentifier("log.discipline")
-            NumberField(label: "Duración (min)", value: $result.minutes.orZero)
+            CombatEditor(result: $result)
         }
     }
+
+    @ViewBuilder
+    private func exerciseHeader(index: Int, exercise: CircuitExercise) -> some View {
+        if exercise.exerciseName.isEmpty || exercise.exerciseID == nil {
+            TextField("Ejercicio", text: $result.prescribed.circuit.exercises[index].exerciseName)
+                .font(.subheadline.bold())
+        } else {
+            Text(exercise.exerciseName).font(.subheadline.bold())
+        }
+        Text(exercise.prescriptionText)
+            .font(.caption)
+            .foregroundStyle(Theme.secondaryText)
+        if let previous = last.find(id: exercise.exerciseID, name: exercise.exerciseName) {
+            LastPerformanceRow(previous: previous) {
+                if var rounds = result.roundActuals {
+                    for r in rounds.indices where index < rounds[r].count {
+                        rounds[r][index].weight = previous.weightKg
+                        rounds[r][index].unit = previous.unit
+                    }
+                    result.roundActuals = rounds
+                    result.syncFromRounds()
+                } else if index < result.circuitActuals.count {
+                    result.circuitActuals[index].weight = previous.weightKg
+                    result.circuitActuals[index].unit = previous.unit
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func amountField(_ exercise: CircuitExercise, value: Binding<PerformedCircuitExercise>) -> some View {
+        if exercise.seconds != nil {
+            IntField(label: "Segundos (presc. \(exercise.seconds ?? 0))", value: value.seconds.orZero)
+        } else {
+            IntField(label: exercise.reps.map { "Reps (presc. \($0))" } ?? "Reps", value: value.reps.orZero)
+        }
+    }
+
+    /// Una celda de una ronda; al cambiarla se recalcula el resumen del ejercicio.
+    private func roundBinding(_ round: Int, _ index: Int) -> Binding<PerformedCircuitExercise> {
+        Binding(
+            get: {
+                guard let rounds = result.roundActuals, round < rounds.count, index < rounds[round].count else {
+                    return PerformedCircuitExercise()
+                }
+                return rounds[round][index]
+            },
+            set: { value in
+                guard var rounds = result.roundActuals, round < rounds.count, index < rounds[round].count else { return }
+                rounds[round][index] = value
+                result.roundActuals = rounds
+                result.syncFromRounds()
+            }
+        )
+    }
+}
+
+/// "R1  [12] reps  [25] lb": lo de un ejercicio en una ronda.
+private struct RoundRow: View {
+    let round: Int
+    let exercise: CircuitExercise
+    @Binding var actual: PerformedCircuitExercise
+
+    private var unit: WeightUnit { actual.unit ?? exercise.unit ?? .preferred }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("R\(round)")
+                .font(Theme.mono(14, weight: .bold))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 30, alignment: .leading)
+            if exercise.seconds != nil {
+                TextField("0", value: $actual.seconds, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 48)
+                Text("s").foregroundStyle(Theme.secondaryText)
+            } else {
+                TextField("0", value: $actual.reps, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 48)
+                Text("reps").foregroundStyle(Theme.secondaryText)
+            }
+            Spacer(minLength: 4)
+            TextField("—", value: weightBinding, format: .number.precision(.fractionLength(0...1)))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 56)
+            WeightUnitToggle(unit: unitBinding)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Ronda \(round)")
+    }
+
+    private var unitBinding: Binding<WeightUnit> {
+        Binding(get: { unit }, set: { actual.unit = $0 })
+    }
+
+    /// Vacío es sin peso (peso corporal); internamente en kg.
+    private var weightBinding: Binding<Double?> {
+        Binding(
+            get: { actual.weight.map { (unit.fromKg($0) * 10).rounded() / 10 } },
+            set: { value in
+                if actual.unit == nil { actual.unit = unit }
+                actual.weight = value.flatMap { $0 > 0 ? unit.toKg($0) : nil }
+            }
+        )
+    }
+}
+
+/// Clase, sparring o pelea: lo que cambia es qué se anota.
+private struct CombatEditor: View {
+    @Binding var result: BlockResult
+
+    private var kind: Binding<CombatKind> {
+        Binding(
+            get: { result.prescribed.klass.combatKind },
+            set: { value in
+                result.prescribed.klass.combat = value == .lesson ? nil : value
+                if value == .lesson {
+                    result.fight = nil
+                } else {
+                    if result.prescribed.klass.rounds == nil { result.prescribed.klass.rounds = value == .fight ? 3 : 5 }
+                    if result.prescribed.klass.roundMinutes == nil { result.prescribed.klass.roundMinutes = value == .fight ? 5 : 3 }
+                    result.rounds = result.prescribed.klass.rounds ?? 0
+                    result.fight = value == .fight ? (result.fight ?? FightResult()) : nil
+                    updateMinutes()
+                }
+            }
+        )
+    }
+
+    var body: some View {
+        Picker("Tipo", selection: kind) {
+            ForEach(CombatKind.allCases) { Text($0.name).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("log.combatKind")
+        Picker("Disciplina", selection: $result.prescribed.klass.discipline) {
+            ForEach(ClassDiscipline.allCases) { Text($0.name).tag($0) }
+        }
+        .accessibilityIdentifier("log.discipline")
+
+        switch result.prescribed.klass.combatKind {
+        case .lesson:
+            NumberField(label: "Duración (min)", value: $result.minutes.orZero)
+        case .sparring:
+            Stepper("Asaltos: \(result.rounds)", value: $result.rounds, in: 1...30)
+                .onChange(of: result.rounds) { syncPrescribedRounds() }
+            roundMinutesField
+            NumberField(label: "Duración total (min)", value: $result.minutes.orZero)
+        case .fight:
+            Picker("Resultado", selection: fightBinding(\.outcome)) {
+                ForEach(FightOutcome.allCases) { Text($0.name).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("log.fightOutcome")
+            if result.fight?.outcome != .draw {
+                Picker("Cómo terminó", selection: fightBinding(\.method)) {
+                    ForEach(FightMethod.allCases) { Text($0.name).tag($0) }
+                }
+            }
+            Stepper("Asaltos peleados: \(result.rounds)", value: $result.rounds, in: 1...12)
+                .onChange(of: result.rounds) { syncPrescribedRounds() }
+            roundMinutesField
+            TextField("Rival (opcional)", text: optionalText(\.opponent))
+            TextField("Evento (opcional)", text: optionalText(\.event))
+            Text("Premio: +\(XPEngine.fightBonus([result])) XP aparte de los topes, más el XP de la sesión.")
+                .font(.caption)
+                .foregroundStyle(Theme.accent)
+        }
+    }
+
+    private var roundMinutesField: some View {
+        NumberField(label: "Minutos por asalto", value: Binding(
+            get: { result.prescribed.klass.roundMinutes ?? 3 },
+            set: { result.prescribed.klass.roundMinutes = $0; updateMinutes() }
+        ))
+    }
+
+    private func syncPrescribedRounds() {
+        result.prescribed.klass.rounds = result.rounds
+        updateMinutes()
+    }
+
+    /// La duración sale de asaltos × minutos, con un minuto de descanso entre asaltos.
+    private func updateMinutes() {
+        let rounds = Double(max(result.rounds, 1))
+        let minutes = rounds * (result.prescribed.klass.roundMinutes ?? 3) + (rounds - 1)
+        result.minutes = minutes
+        result.prescribed.klass.minutes = minutes
+    }
+
+    private func fightBinding<T>(_ path: WritableKeyPath<FightResult, T>) -> Binding<T> {
+        Binding(
+            get: { (result.fight ?? FightResult())[keyPath: path] },
+            set: { value in
+                var fight = result.fight ?? FightResult()
+                fight[keyPath: path] = value
+                result.fight = fight
+            }
+        )
+    }
+
+    private func optionalText(_ path: WritableKeyPath<FightResult, String?>) -> Binding<String> {
+        Binding(
+            get: { result.fight?[keyPath: path] ?? "" },
+            set: { value in
+                var fight = result.fight ?? FightResult()
+                fight[keyPath: path] = value.isEmpty ? nil : value
+                result.fight = fight
+            }
+        )
+    }
+
 }
 
 /// "La vez pasada: 25 lb × 6", con un toque para volver a usarlo.

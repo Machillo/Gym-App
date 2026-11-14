@@ -18,6 +18,10 @@ enum ComplianceEngine {
             }
             let rounds = p.circuit.rounds
             guard rounds > 0 else { return 0 }
+            if let perRound = result.roundActuals, !p.circuit.exercises.isEmpty {
+                // Solo cuentan las rondas hechas: las filas de más (o que faltan) no suman.
+                return roundByRound(p.circuit, rounds: Array(perRound.prefix(max(result.rounds, 0))))
+            }
             let roundRatio = clamp(Double(result.rounds) / Double(rounds))
             let exercises = p.circuit.exercises
             guard !exercises.isEmpty else { return roundRatio }
@@ -38,6 +42,8 @@ enum ComplianceEngine {
             return 0
 
         case .classSession:
+            // Una pelea se cumple por haberla peleado, dure lo que dure.
+            if p.klass.combatKind == .fight { return result.fight == nil ? 0 : 1 }
             guard p.klass.minutes > 0 else { return 0 }
             return clamp((result.minutes ?? 0) / p.klass.minutes)
         }
@@ -79,6 +85,24 @@ enum ComplianceEngine {
 
     static func estimatedMinutes(_ blocks: [RoutineBlock]) -> Double {
         blocks.reduce(0) { $0 + estimatedMinutes($1) }
+    }
+
+    /// Lo hecho en todas las rondas contra lo prescrito en todas: una ronda floja se compensa con otra mejor.
+    private static func roundByRound(_ circuit: CircuitPrescription, rounds: [[PerformedCircuitExercise]]) -> Double {
+        let total = Double(circuit.rounds)
+        var sum = 0.0
+        for (index, exercise) in circuit.exercises.enumerated() {
+            let column = rounds.compactMap { index < $0.count ? $0[index] : nil }
+            if let reps = exercise.reps, reps > 0 {
+                sum += clamp(Double(column.reduce(0) { $0 + ($1.reps ?? 0) }) / (Double(reps) * total))
+            } else if let seconds = exercise.seconds, seconds > 0 {
+                sum += clamp(Double(column.reduce(0) { $0 + ($1.seconds ?? 0) }) / (Double(seconds) * total))
+            } else {
+                // "Máximo de reps": cuenta cada ronda en la que hiciste algo.
+                sum += clamp(Double(column.filter { ($0.reps ?? 0) > 0 || ($0.seconds ?? 0) > 0 }.count) / total)
+            }
+        }
+        return sum / Double(circuit.exercises.count)
     }
 
     private static func exerciseRatio(prescribed: CircuitExercise, actual: PerformedCircuitExercise) -> Double {

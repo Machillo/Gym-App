@@ -23,6 +23,12 @@ enum Progression {
     static let earlyBonus: Double = 0.10
     static let earlyBonusBeforeHour = 6
 
+    // Combate. El sparring pesa más que una clase; la pelea da un premio aparte que no cuenta para los topes.
+    static let sparringXPMultiplier: Double = 1.25
+    static let fightXP = 300
+    static let fightWinXP = 300
+    static let fightFinishXP = 100
+
     // Topes anti-sobreentrenamiento
     static let dailyXPCap = 200
     static let weeklyXPCap = 700

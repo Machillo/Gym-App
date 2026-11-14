@@ -221,7 +221,7 @@ struct StatusView: View {
             Button {
                 logMode = .classLog
             } label: {
-                Label("Registrar clase", systemImage: "figure.boxing").frame(maxWidth: .infinity)
+                Label("Clase, sparring o pelea", systemImage: "figure.boxing").frame(maxWidth: .infinity)
             }
             .buttonStyle(.secondaryAction)
             .accessibilityIdentifier("status.logClass")

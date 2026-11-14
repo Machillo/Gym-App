@@ -349,9 +349,11 @@ final class GameService {
         let blocks = draft.results.map(\.prescribed)
         let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
                                           rpe: draft.rpe, compliance: compliance, startedAt: draft.date)
-        let raw = XPEngine.rawXP(input) * recoveryXPMultiplier(draft.date)
+        let raw = XPEngine.rawXP(input) * recoveryXPMultiplier(draft.date) * XPEngine.combatMultiplier(blocks)
         let existing = sessions()
+        let fightBonus = XPEngine.fightBonus(draft.results)
         let xp = XPEngine.cappedXP(raw: raw, earnedToday: xpEarned(day: draft.date), earnedThisWeek: xpEarned(week: draft.date))
+            + fightBonus
 
         let session = WorkoutSession(date: draft.date, title: draft.title, results: draft.results, rpe: draft.rpe,
                                      notes: draft.notes, durationMinutes: draft.durationMinutes,
@@ -373,8 +375,12 @@ final class GameService {
         for kind in StatKind.allCases { stats[kind] += gains[kind] }
         player.stats = stats
 
-        log(.gain, SystemMessages.sessionLogged(xp: xp, compliance: compliance, capped: Double(xp) < raw.rounded()),
+        log(.gain, SystemMessages.sessionLogged(xp: xp, compliance: compliance, capped: Double(xp - fightBonus) < raw.rounded()),
             xpDelta: xp, player: player, date: draft.date)
+        if let fight = draft.results.compactMap(\.fight).first {
+            announcements.append(Announcement(headline: fight.outcome == .win ? "VICTORIA" : "PELEA REGISTRADA",
+                                              message: SystemMessages.fight(fight, bonus: fightBonus), positive: true))
+        }
         if session.isClass { requestHealthSync() }
 
         if draft.isPunishment {
@@ -422,9 +428,10 @@ final class GameService {
         let blocks = draft.results.map(\.prescribed)
         let input = XPEngine.SessionInput(dominantKind: XPEngine.dominantKind(blocks), minutes: draft.durationMinutes,
                                           rpe: draft.rpe, compliance: compliance, startedAt: draft.date)
-        let raw = XPEngine.rawXP(input) * recoveryXPMultiplier(draft.date)
+        let raw = XPEngine.rawXP(input) * recoveryXPMultiplier(draft.date) * XPEngine.combatMultiplier(blocks)
         let xp = XPEngine.cappedXP(raw: raw, earnedToday: xpEarned(day: draft.date, excluding: session.id),
                                    earnedThisWeek: xpEarned(week: draft.date, excluding: session.id))
+            + XPEngine.fightBonus(draft.results)
         let delta = xp - session.xpAwarded
 
         session.date = draft.date

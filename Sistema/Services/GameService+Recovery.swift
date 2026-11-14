@@ -106,15 +106,16 @@ extension GameService {
     }
 
     /// XP ya ganado en el día o la semana, misiones de descanso incluidas, para respetar los topes.
+    /// Lo que cuenta para los topes: el premio de una pelea va aparte.
     func xpEarned(day date: Date, excluding sessionID: UUID? = nil) -> Int {
         let day = SistemaCalendar.startOfDay(date)
-        return sessions().filter { $0.id != sessionID && SistemaCalendar.startOfDay($0.date) == day }.reduce(0) { $0 + $1.xpAwarded }
+        return sessions().filter { $0.id != sessionID && SistemaCalendar.startOfDay($0.date) == day }.reduce(0) { $0 + $1.cappedXP }
             + recoveryRecords().filter { $0.day == day }.reduce(0) { $0 + ($1.missionXP ?? 0) }
     }
 
     func xpEarned(week date: Date, excluding sessionID: UUID? = nil) -> Int {
         let week = SistemaCalendar.startOfWeek(date)
-        return sessions().filter { $0.id != sessionID && SistemaCalendar.startOfWeek($0.date) == week }.reduce(0) { $0 + $1.xpAwarded }
+        return sessions().filter { $0.id != sessionID && SistemaCalendar.startOfWeek($0.date) == week }.reduce(0) { $0 + $1.cappedXP }
             + recoveryRecords().filter { SistemaCalendar.startOfWeek($0.day) == week }.reduce(0) { $0 + ($1.missionXP ?? 0) }
     }
 
